@@ -103,6 +103,26 @@ Operational monitoring and reliability features include:
 - Sharp / FFmpeg / pdf-lib / LibreOffice / others
 - Pino, Sentry, PostHog
 
+## Running the Application
+
+This project is recommended to run as two separate processes:
+
+1. **Next.js application**
+
+   ```bash
+   bun run dev
+   ```
+
+2. **Background worker** for BullMQ jobs
+
+   ```bash
+   bun run worker
+   ```
+
+Run these in separate terminals so the web app and the queue worker stay independent.
+
+The web app starts the UI and API routes, while the worker listens for queue jobs and processes them asynchronously.
+
 ---
 
 ## Database Setup & Migrations
