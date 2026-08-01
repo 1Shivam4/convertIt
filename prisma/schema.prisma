@@ -1,0 +1,66 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String?
+  createdAt DateTime  @default(now())
+  jobs      Job[]
+  apiKeys   ApiKey[]
+}
+
+model Job {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  status       JobStatus    @default(QUEUED)
+  sourceFormat String
+  targetFormat String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  files        File[]
+  conversions  Conversion[]
+}
+
+model File {
+  id        String   @id @default(cuid())
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id])
+  path      String   // R2 path: uploads/ or outputs/
+  size      Int
+  mimeType  String
+  createdAt DateTime @default(now())
+}
+
+model Conversion {
+  id         String   @id @default(cuid())
+  jobId      String
+  job        Job      @relation(fields: [jobId], references: [id])
+  engine     String   // sharp, ffmpeg, libreoffice, etc.
+  startedAt  DateTime?
+  finishedAt DateTime?
+  error      String?
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  key       String   @unique
+  createdAt DateTime @default(now())
+}
+
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
