@@ -1,36 +1,96 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ConvertIt
 
-## Getting Started
+## Application Architecture
 
-First, run the development server:
+### 1. Frontend
+The frontend is built with Next.js and includes the following user-facing sections:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Landing Page
+- All Tools
+- Upload & Convert
+- Dashboard
+- Job History
+- Downloads
+- Account Settings
+- Authentication
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Backend
+The backend is exposed through Next.js API routes and server actions, with the following modules:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Auth API
+- Upload API
+- Conversion API
+- Job API
+- Download API
+- User API
+- Admin API
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Data Layer
+The main application data is stored in PostgreSQL (Neon / Supabase) and organized around:
 
-## Learn More
+- Users
+- Jobs
+- Files
+- Conversions
+- Settings
+- API Keys
 
-To learn more about Next.js, take a look at the following resources:
+### 4. Queue
+Asynchronous job orchestration is handled using:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Redis
+- BullMQ
+- Conversion Queue
+- Retry / Failed Job Queue
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 5. Worker Layer
+Background processing workers handle conversion tasks across multiple formats:
 
-## Deploy on Vercel
+- Image Engine
+- PDF Engine
+- Document Engine
+- Media Engine
+- Developer Tools
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+These workers perform operations such as:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Resize
+- Compress
+- Crop
+- Merge
+- Split
+- Rotate
+- Watermark
+- Format conversion
+
+### 6. Storage
+Processed and temporary files are stored in Cloudflare R2 / AWS S3-compatible object storage:
+
+- uploads/original files
+- temp files
+- converted files
+
+### 7. Output & Delivery
+After conversion jobs complete, the platform:
+
+- Generates a secure download link
+- Lets the user download the file
+- Automatically deletes files after a retention period
+
+### 8. Observability & Operations
+Operational monitoring and reliability features include:
+
+- Logging (Pino)
+- Monitoring (Sentry)
+- Analytics (PostHog)
+- Rate limiting
+- Email alerts / resend notifications
+
+## Tech Stack
+
+- Next.js
+- PostgreSQL
+- Redis + BullMQ
+- Cloudflare R2 / S3 storage
+- Sharp / FFmpeg / pdf-lib / LibreOffice / others
+- Pino, Sentry, PostHog
