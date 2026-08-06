@@ -1,0 +1,71 @@
+.hero_container {
+  padding: 150px 0px;
+  height: 60vh;
+  text-align: center;
+  position: relative;
+  background: linear-gradient(0deg, #390c0c, #050101, #150b09, #1a1919a8);
+  background-size: 200% 200%;
+  animation: gradientMove 8s ease infinite;
+}
+
+.hero {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hero h2 {
+  font-size: 2.5rem;
+  font-weight: bold;
+}
+
+.hero p {
+  font-size: 1.2rem;
+  font-weight: 500;
+  text-align: justify;
+  color: #f0f0f083;
+}
+
+.hero_file_convert {
+  position: relative;
+}
+
+.hero_file_convert {
+  position: relative;
+  margin: 0 auto;
+}
+
+.hero_file_convert::before,
+.hero_file_convert::after {
+  content: "";
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.hero_file_convert::before {
+  width: 300px;
+  height: 300px;
+}
+
+.hero_file_convert::after {
+  width: 200px;
+  height: 200px;
+}
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}

@@ -1,0 +1,38 @@
+.header {
+  position: fixed;
+  top: 0px;
+  width: 100%;
+  overflow: hidden;
+  z-index: 100;
+}
+
+.nav {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px 0px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: bold;
+  color: white;
+  text-decoration: none;
+}
+
+.heading {
+  font-size: 24px;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.81);
+}
+
+.nav_item {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.81);
+  font-size: 16px;
+}

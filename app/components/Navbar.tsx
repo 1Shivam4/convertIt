@@ -1,187 +1,26 @@
 import Image from "next/image";
-
-interface NavItemsProps {
-  name: string;
-  location: string;
-  icon: string;
-  description: string;
-}
-
-interface NavbarItemsProps {
-  name: string;
-  icon: string;
-  conversionType: "image" | "pdf" | "document" | "media" | "developer";
-  itemsList: NavItemsProps[];
-}
-
-const navbarItems: NavbarItemsProps[] = [
-  {
-    name: "PDF",
-    icon: "/icons/pdf.svg",
-    conversionType: "pdf",
-    itemsList: [
-      {
-        name: "Compress PDF",
-        location: "/tools/compress-pdf",
-        icon: "/icons/compress.svg",
-        description: "Reduce PDF file size while keeping quality",
-      },
-      {
-        name: "Merge PDF",
-        location: "/tools/merge-pdf",
-        icon: "/icons/merge-pdf.svg",
-        description: "Combine multiple PDFs into one file",
-      },
-      {
-        name: "Split PDF",
-        location: "/tools/split-pdf",
-        icon: "/icons/split-pdf.svg",
-        description: "Extract pages into separate PDF files",
-      },
-      {
-        name: "Compare PDF",
-        location: "/tools/compare-pdf",
-        icon: "/icons/compare_pdf.svg",
-        description: "Compare two PDFs and highlight differences",
-      },
-      {
-        name: "Scan to PDF",
-        location: "/tools/scan-pdf",
-        icon: "/icons/scan_pdf.svg",
-        description: "Convert scanned images into a searchable PDF",
-      },
-      {
-        name: "Protect PDF",
-        location: "/tools/protect-pdf",
-        icon: "/icons/file_lock.svg",
-        description: "Add a password to secure your PDF",
-      },
-      {
-        name: "PDF to JPG",
-        location: "/tools/pdf-to-jpg",
-        icon: "/icons/pdf_to_jpg.svg",
-        description: "Convert PDF pages into JPG images",
-      },
-      {
-        name: "JPG to PDF",
-        location: "/tools/jpg-to-pdf",
-        icon: "/icons/jpg_to_pdf.svg",
-        description: "Convert JPG images into a PDF file",
-      },
-      {
-        name: "PDF to Word",
-        location: "/tools/pdf-to-word",
-        icon: "/icons/pdf_to_word.svg",
-        description: "Convert PDF into an editable Word document",
-      },
-      {
-        name: "Word to PDF",
-        location: "/tools/word-to-pdf",
-        icon: "/icons/word_2_pdf.svg",
-        description: "Convert Word documents into PDF",
-      },
-      {
-        name: "PDF to PPT",
-        location: "/tools/pdf-to-ppt",
-        icon: "/icons/pdf_to_ppt.svg",
-        description: "Convert PDF into a PowerPoint presentation",
-      },
-      {
-        name: "PPT to PDF",
-        location: "/tools/ppt-to-pdf",
-        icon: "/icons/ppt_2_pdf.svg",
-        description: "Convert PowerPoint slides into PDF",
-      },
-      {
-        name: "PDF to Excel",
-        location: "/tools/pdf-to-excel",
-        icon: "/icons/pdf-to-excel.svg",
-        description: "Convert PDF tables into an Excel spreadsheet",
-      },
-      {
-        name: "Excel to PDF",
-        location: "/tools/excel-to-pdf",
-        icon: "/icons/excel_2_pdf.svg",
-        description: "Convert Excel spreadsheets into PDF",
-      },
-      {
-        name: "HTML to PDF",
-        location: "/tools/html-to-pdf",
-        icon: "/icons/html_to_pdf.svg",
-        description: "Convert web pages or HTML files into PDF",
-      },
-      {
-        name: "PDF to Markdown",
-        location: "/tools/pdf-to-md",
-        icon: "/icons/pdf_to_md.svg",
-        description: "Convert PDF content into Markdown format",
-      },
-    ],
-  },
-  {
-    name: "Image",
-    icon: "/icons/png.svg",
-    conversionType: "image",
-    itemsList: [
-      {
-        name: "Compress Image",
-        location: "/tools/compress-image",
-        icon: "/icons/compress.svg",
-        description: "Reduce image file size while keeping quality",
-      },
-      // PNG/JPG/WEBP/HEIC conversions go here once you have icons for them
-    ],
-  },
-  {
-    name: "Media",
-    icon: "/icons/video.svg",
-    conversionType: "media",
-    itemsList: [
-      {
-        name: "Convert Video",
-        location: "/tools/convert-video",
-        icon: "/icons/video.svg",
-        description: "Convert between video formats like MP4, MOV, MKV",
-      },
-    ],
-  },
-  {
-    name: "Developer Tools",
-    icon: "/icons/json.svg",
-    conversionType: "developer",
-    itemsList: [
-      {
-        name: "CSV to JSON",
-        location: "/tools/csv-to-json",
-        icon: "/icons/csv.svg",
-        description: "Convert CSV data into JSON format",
-      },
-      {
-        name: "JSON to YAML",
-        location: "/tools/json-to-yaml",
-        icon: "/icons/yaml.svg",
-        description: "Convert JSON data into YAML format",
-      },
-    ],
-  },
-];
+import styles from "./navbar.module.css";
+import NavItems from "./NavItems";
 
 export default function Navbar() {
   return (
-    <header>
-      <nav>
-        <h1>
-          <Image src="/icons/loop.svg" height={100} width={100} alt="logo" />
-          ConvertIt
-        </h1>
+    <header className={styles.header}>
+      <nav className={styles.nav}>
+        <div className="flex items-center gap-2">
+          <Image
+            src="/icons/loop.svg"
+            width={32}
+            height={32}
+            alt="logo"
+            loading="eager"
+            className={styles.logo}
+          />
+          <h1 className={styles.heading}> ConvertIt</h1>
+        </div>
 
-        <ul>
-          {navbarItems.map((item) => (
-            <li key={item.icon}>{item.name}</li>
-          ))}
-        </ul>
+        <NavItems />
 
-        <div>
+        <div className="flex gap-2">
           <button className="btn">Signup</button>
           <button className="btn">Login</button>
         </div>
