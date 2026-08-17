@@ -7,6 +7,7 @@ interface ApplicationStoreProps {
   setTheme: (theme: string) => void;
   navItem: NavbarItemsProps | null;
   setNavItem: (name: string | null) => void;
+  detectedFileType: null | "";
 }
 
 export const useApplicationStore = create<ApplicationStoreProps>((set) => ({
@@ -15,4 +16,5 @@ export const useApplicationStore = create<ApplicationStoreProps>((set) => ({
   navItem: null,
   setNavItem: (name) =>
     set({ navItem: navbarItems.find((nav) => nav.name === name) }),
+  detectedFileType: null,
 }));

@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import NavItems from "./NavItems";
 import { Moon } from "lucide-react";
+import ToggleTheme from "./ToggleTheme";
 
 export default function Navbar() {
   return (
@@ -41,13 +42,7 @@ export default function Navbar() {
             Sign up
           </Link>
 
-          <button
-            type="button"
-            aria-label="Toggle theme"
-            className="p-2 text-slate-400 hover:text-white rounded-md transition-colors hover:bg-white/5"
-          >
-            <Moon className="w-4 h-4" />
-          </button>
+          <ToggleTheme />
         </div>
       </div>
     </header>

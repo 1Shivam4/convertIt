@@ -1,5 +1,5 @@
 "use client";
-import { useApplicationStore } from "../store/useApplicationStore";
+import { useApplicationStore } from "../app/store/useApplicationStore";
 import styles from "./nav_info.module.css";
 
 export default function NavInfo() {

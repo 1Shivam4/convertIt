@@ -4,8 +4,8 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
-import { navbarItems } from "../utils/vars";
-import { NavbarItemsProps } from "../utils/typeDefinitions";
+import { navbarItems } from "../app/utils/vars";
+import { NavbarItemsProps } from "../app/utils/typeDefinitions";
 
 export default function NavItems() {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -25,7 +25,9 @@ export default function NavItems() {
             <button
               type="button"
               className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                isOpen ? "text-white bg-white/10" : "text-slate-300 hover:text-white hover:bg-white/5"
+                isOpen
+                  ? "text-white bg-white/10"
+                  : "text-slate-300 hover:text-white hover:bg-white/5"
               }`}
             >
               <span>{item.name}</span>

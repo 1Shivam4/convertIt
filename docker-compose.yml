@@ -1,0 +1,7 @@
+services:
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: gotenberg
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
