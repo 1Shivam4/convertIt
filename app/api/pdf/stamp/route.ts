@@ -1,6 +1,6 @@
 import { proxyToGotenberg } from "../../../lib/gotenberg/client";
 
-const DEFAULT_PATH = "/watermark";
+const DEFAULT_PATH = "/stamp";
 
 export async function POST(req: Request) {
   return proxyToGotenberg(req, DEFAULT_PATH);
