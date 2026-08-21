@@ -9,6 +9,7 @@ export const useConverterStore = create<ConverterState>((set) => ({
   targetFormat: null,
 
   outputFile: null,
+  outputFileName: null,
   error: null,
 
   setFile: (file) =>
@@ -17,6 +18,7 @@ export const useConverterStore = create<ConverterState>((set) => ({
       stage: "detecting",
       error: null,
       outputFile: null,
+      outputFileName: null,
     }),
 
   setSourceType: (type) =>
@@ -42,10 +44,11 @@ export const useConverterStore = create<ConverterState>((set) => ({
       error: null,
     }),
 
-  completeConversion: (output) =>
+  completeConversion: (output, fileName) =>
     set({
       stage: "completed",
       outputFile: output,
+      outputFileName: fileName || null,
     }),
 
   setError: (error) =>
@@ -61,6 +64,15 @@ export const useConverterStore = create<ConverterState>((set) => ({
       sourceType: null,
       targetFormat: null,
       outputFile: null,
+      outputFileName: null,
+      error: null,
+    }),
+
+  resetConversion: () =>
+    set({
+      stage: "ready",
+      outputFile: null,
+      outputFileName: null,
       error: null,
     }),
 }));

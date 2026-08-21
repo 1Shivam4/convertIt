@@ -1,6 +1,6 @@
 import { proxyToGotenberg } from "../../../lib/gotenberg/client";
 
-const DEFAULT_PATH = "/forms/pdfengines/watermark";
+const DEFAULT_PATH = "/forms/pdfengines/encrypt";
 
 export async function POST(req: Request) {
   return proxyToGotenberg(req, DEFAULT_PATH);

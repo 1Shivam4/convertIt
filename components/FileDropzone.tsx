@@ -4,9 +4,10 @@ import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { CloudUpload, FileText, X, Loader2 } from "lucide-react";
 import { useConverterStore } from "../app/store/useFileDetectionStore";
 import { detectFileType } from "../app/lib/file/detect_file_types";
+import PDFToConvertor from "./PDFToConvertor";
 
 export default function FileDropzone() {
-  const { file, stage, setFile, setSourceType, setError, reset } =
+  const { file, stage, sourceType, setFile, setSourceType, setError, reset } =
     useConverterStore();
 
   const [isDragging, setIsDragging] = useState(false);
@@ -100,6 +101,24 @@ export default function FileDropzone() {
         </div>
       </div>
     );
+  }
+
+  // Render 2-Section PDF converter interface when PDF file is ready or being converted
+  if (
+    file &&
+    (stage === "ready" ||
+      stage === "converting" ||
+      stage === "completed" ||
+      stage === "error")
+  ) {
+    const isPdf =
+      sourceType?.extension === "pdf" ||
+      file.type === "application/pdf" ||
+      file.name.toLowerCase().endsWith(".pdf");
+
+    if (isPdf) {
+      return <PDFToConvertor />;
+    }
   }
 
   return (

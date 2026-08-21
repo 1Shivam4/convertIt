@@ -1,6 +1,6 @@
 import { proxyToGotenberg } from "../../../lib/gotenberg/client";
 
-const DEFAULT_PATH = "/markdown-to-pdf";
+const DEFAULT_PATH = "/forms/chromium/convert/markdown";
 
 export async function POST(req: Request) {
   return proxyToGotenberg(req, DEFAULT_PATH);

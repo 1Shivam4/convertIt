@@ -41,9 +41,8 @@ export default function RootLayout({
     >
       <body className="bg-[#0b0d11] text-slate-100 min-h-screen antialiased selection:bg-red-600 selection:text-white">
         {children}
+        <Toaster />
       </body>
-
-      <Toaster />
     </html>
   );
 }

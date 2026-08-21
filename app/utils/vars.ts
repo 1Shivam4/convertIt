@@ -151,3 +151,144 @@ export const navbarItems: NavbarItemsProps[] = [
     ],
   },
 ];
+
+export interface PDFFormatOption {
+  id: string;
+  name: string;
+  extension: string;
+  category: "document" | "tools";
+  description: string;
+  iconName:
+    | "FileText"
+    | "FileType"
+    | "FileCode"
+    | "Presentation"
+    | "FileSpreadsheet"
+    | "Zap"
+    | "Shield"
+    | "RotateCw"
+    | "Layers"
+    | "Lock"
+    | "LockOpen";
+  endpoint: string;
+}
+
+export const PDF_FORMAT_OPTIONS: PDFFormatOption[] = [
+  {
+    id: "docx",
+    name: "Word Document",
+    extension: ".docx",
+    category: "document",
+    description: "Convert PDF text & tables into editable Microsoft Word format",
+    iconName: "FileText",
+    endpoint: "/api/pdf/convert?target=/forms/libreoffice/convert",
+  },
+  {
+    id: "txt",
+    name: "Plain Text",
+    extension: ".txt",
+    category: "document",
+    description: "Extract clean raw unformatted text from all PDF pages",
+    iconName: "FileType",
+    endpoint: "/api/pdf/convert?target=/forms/libreoffice/convert",
+  },
+  {
+    id: "html",
+    name: "HTML Page",
+    extension: ".zip",
+    category: "document",
+    description: "Convert PDF into HTML + assets (downloaded as ZIP archive)",
+    iconName: "FileCode",
+    endpoint: "/api/pdf/convert?target=/forms/libreoffice/convert",
+  },
+  {
+    id: "md",
+    name: "Markdown",
+    extension: ".md",
+    category: "document",
+    description: "Convert PDF document to Markdown headings and text",
+    iconName: "FileCode",
+    endpoint: "/api/pdf/convert?target=/forms/libreoffice/convert",
+  },
+  {
+    id: "pptx",
+    name: "PowerPoint",
+    extension: ".pptx",
+    category: "document",
+    description: "Convert PDF pages into editable PowerPoint slides",
+    iconName: "Presentation",
+    endpoint: "/api/pdf/convert?target=/forms/libreoffice/convert",
+  },
+  {
+    id: "xlsx",
+    name: "Excel Sheet",
+    extension: ".xlsx",
+    category: "document",
+    description: "Extract PDF tables directly into Excel spreadsheet format",
+    iconName: "FileSpreadsheet",
+    endpoint: "/api/pdf/convert?target=/forms/libreoffice/convert",
+  },
+  {
+    id: "compress",
+    name: "Compress PDF",
+    extension: ".pdf",
+    category: "tools",
+    description: "Optimize PDF structure and reduce file size",
+    iconName: "Zap",
+    endpoint: "/api/pdf/optimize",
+  },
+  {
+    id: "pdfa",
+    name: "PDF/A Archival",
+    extension: ".pdf",
+    category: "tools",
+    description: "Standardize PDF for long-term ISO digital archiving",
+    iconName: "Shield",
+    endpoint: "/api/pdf/convert?target=/forms/pdfengines/convert",
+  },
+  {
+    id: "rotate",
+    name: "Rotate Pages",
+    extension: ".pdf",
+    category: "tools",
+    description: "Rotate all pages by 90°, 180°, or 270° degrees",
+    iconName: "RotateCw",
+    endpoint: "/api/pdf/rotate",
+  },
+  {
+    id: "flatten",
+    name: "Flatten PDF",
+    extension: ".pdf",
+    category: "tools",
+    description: "Make form fields, signatures, and annotations non-editable",
+    iconName: "Layers",
+    endpoint: "/api/pdf/flatten",
+  },
+  {
+    id: "encrypt",
+    name: "Protect PDF",
+    extension: ".pdf",
+    category: "tools",
+    description: "Encrypt PDF with custom user password protection",
+    iconName: "Lock",
+    endpoint: "/api/pdf/encrypt",
+  },
+  {
+    id: "decrypt",
+    name: "Unlock PDF",
+    extension: ".pdf",
+    category: "tools",
+    description: "Remove password protection from a PDF you own",
+    iconName: "LockOpen",
+    endpoint: "/api/pdf/decrypt",
+  },
+];
+
+export const PDF_CATEGORIES = [
+  { id: "all", label: "All Formats" },
+  { id: "document", label: "Documents" },
+  { id: "tools", label: "PDF Tools & Archival" },
+] as const;
+
+export const ROTATION_ANGLES = ["90", "180", "270"] as const;
+export const PDFA_VERSIONS = ["PDF/A-1b", "PDF/A-2b", "PDF/A-3b"] as const;

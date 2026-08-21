@@ -20,7 +20,8 @@ export async function proxyToGotenberg(req: Request, defaultPath = "/") {
       headers,
       body:
         req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
-    });
+      duplex: "half",
+    } as RequestInit & { duplex: string });
 
     const resHeaders = Object.fromEntries(res.headers.entries());
     return new Response(res.body, { status: res.status, headers: resHeaders });

@@ -35,6 +35,7 @@ export interface ConverterState {
   targetFormat: string | null;
 
   outputFile: Blob | null;
+  outputFileName: string | null;
   error: string | null;
 
   setFile: (file: File) => void;
@@ -43,8 +44,9 @@ export interface ConverterState {
 
   startDetection: () => void;
   startConversion: () => void;
-  completeConversion: (output: Blob) => void;
+  completeConversion: (output: Blob, fileName?: string) => void;
 
   setError: (error: string) => void;
   reset: () => void;
+  resetConversion: () => void;
 }

@@ -1,6 +1,6 @@
 import { proxyToGotenberg } from "../../../../lib/gotenberg/client";
 
-const DEFAULT_PATH = "/metadata/write";
+const DEFAULT_PATH = "/forms/pdfengines/metadata/write";
 
 export async function POST(req: Request) {
   return proxyToGotenberg(req, DEFAULT_PATH);
