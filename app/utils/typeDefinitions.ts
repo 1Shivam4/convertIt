@@ -31,6 +31,7 @@ export interface ConverterState {
   stage: ConverterStage;
 
   file: File | null;
+  files: File[];
   sourceType: FileType | null;
   targetFormat: string | null;
 
@@ -39,6 +40,9 @@ export interface ConverterState {
   error: string | null;
 
   setFile: (file: File) => void;
+  addFiles: (files: File[]) => void;
+  removeFile: (index: number) => void;
+  reorderFiles: (fromIndex: number, toIndex: number) => void;
   setSourceType: (type: FileType) => void;
   setTargetFormat: (format: string) => void;
 

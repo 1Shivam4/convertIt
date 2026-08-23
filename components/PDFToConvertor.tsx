@@ -16,10 +16,20 @@ import PDFPreview from "./pdf-converter/PDFPreview";
 import FormatSelector from "./pdf-converter/FormatSelector";
 import ToolOptions from "./pdf-converter/ToolOptions";
 import ConversionStatus from "./pdf-converter/ConversionStatus";
+import PDFPageGrid from "./pdf-converter/PDFPageGrid";
+import PDFFileList from "./pdf-converter/PDFFileList";
+import {
+  rotatePDFPages,
+  deletePDFPages,
+  extractPDFPages,
+  mergePDFDocuments,
+} from "@/app/lib/pdf/pdfLibUtils";
+import { renderPdfPagesToImages } from "@/app/lib/pdf/pdfToImageUtils";
 
 export default function PDFToConvertor() {
   const {
     file,
+    files,
     stage,
     outputFile,
     outputFileName,
@@ -30,6 +40,16 @@ export default function PDFToConvertor() {
     reset,
     resetConversion,
   } = useConverterStore();
+
+  const [pageManipulations, setPageManipulations] = useState<{
+    pageRotations: Record<number, number>;
+    deletedPages: number[];
+    selectedPages: number[];
+  }>({
+    pageRotations: {},
+    deletedPages: [],
+    selectedPages: [],
+  });
 
   const [activeCategory, setActiveCategory] = useState<"all" | "document" | "tools">("all");
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -80,8 +100,78 @@ export default function PDFToConvertor() {
       abortControllerRef.current = controller;
 
       try {
+        // Multi-file Merge handling powered by pdf-lib
+        if (values.selectedFormatId === "merge") {
+          const filesToMerge = files.length > 0 ? files : [file];
+          const buffers = await Promise.all(filesToMerge.map((f) => f.arrayBuffer()));
+          const mergedBytes = await mergePDFDocuments(buffers);
+          const resultBlob = new Blob([mergedBytes.buffer as ArrayBuffer], { type: "application/pdf" });
+          const baseName = file.name.substring(0, file.name.lastIndexOf(".")) || "merged";
+          completeConversion(resultBlob, `${baseName}_merged.pdf`);
+          return;
+        }
+
+        // Split / Page Extraction handling powered by pdf-lib
+        if (values.selectedFormatId === "split") {
+          let targetPages: number[] = [];
+
+          if (pageManipulations.selectedPages.length > 0) {
+            targetPages = pageManipulations.selectedPages;
+          } else if (values.splitSpan) {
+            const parts = values.splitSpan.split(",");
+            parts.forEach((p) => {
+              const range = p.trim().split("-");
+              if (range.length === 2) {
+                const start = parseInt(range[0], 10) - 1;
+                const end = parseInt(range[1], 10) - 1;
+                for (let i = start; i <= end; i++) {
+                  if (!isNaN(i)) targetPages.push(i);
+                }
+              } else if (range.length === 1) {
+                const pageNum = parseInt(range[0], 10) - 1;
+                if (!isNaN(pageNum)) targetPages.push(pageNum);
+              }
+            });
+          }
+
+          if (targetPages.length > 0) {
+            const buffer = await file.arrayBuffer();
+            const extractedBytes = await extractPDFPages(buffer, targetPages);
+            const resultBlob = new Blob([extractedBytes.buffer as ArrayBuffer], { type: "application/pdf" });
+            const baseName = file.name.substring(0, file.name.lastIndexOf(".")) || "document";
+            completeConversion(resultBlob, `${baseName}_split.pdf`);
+            return;
+          }
+        }
+
+        // PDF to PNG / JPG Image export powered by pdfjs-dist & JSZip
+        if (values.selectedFormatId === "png" || values.selectedFormatId === "jpg") {
+          const format = values.selectedFormatId === "jpg" ? "jpeg" : "png";
+          const buffer = await file.arrayBuffer();
+          const { blob, isZip } = await renderPdfPagesToImages(buffer, format);
+          const baseName = file.name.substring(0, file.name.lastIndexOf(".")) || "document";
+          const ext = isZip ? "zip" : format === "jpeg" ? "jpg" : "png";
+          completeConversion(blob, `${baseName}_images.${ext}`);
+          return;
+        }
+
+        let processedFile = file;
+        const hasRotations = Object.keys(pageManipulations.pageRotations).length > 0;
+        const hasDeletions = pageManipulations.deletedPages.length > 0;
+
+        if (hasRotations || hasDeletions) {
+          let buffer = await file.arrayBuffer();
+          if (hasDeletions) {
+            buffer = (await deletePDFPages(buffer, pageManipulations.deletedPages)).buffer as ArrayBuffer;
+          }
+          if (hasRotations) {
+            buffer = (await rotatePDFPages(buffer, pageManipulations.pageRotations)).buffer as ArrayBuffer;
+          }
+          processedFile = new File([buffer], file.name, { type: "application/pdf" });
+        }
+
         const formData = new FormData();
-        formData.append("files", file, file.name);
+        formData.append("files", processedFile, processedFile.name);
 
         const targetFormatDef =
           PDF_FORMAT_OPTIONS.find((f) => f.id === values.selectedFormatId) ||
@@ -99,6 +189,9 @@ export default function PDFToConvertor() {
           formData.append("password", values.password || "");
         } else if (values.selectedFormatId === "pdfa") {
           formData.append("pdfa", values.pdfaVersion);
+        } else if (values.selectedFormatId === "split") {
+          formData.append("mode", "intervals");
+          formData.append("span", values.splitSpan || "1");
         }
 
         const response = await fetch(url, {
@@ -122,11 +215,11 @@ export default function PDFToConvertor() {
           file.name.substring(0, file.name.lastIndexOf(".")) || file.name;
         let outExt = targetFormatDef.extension;
         if (
-          ["rotate", "compress", "flatten", "encrypt", "decrypt", "pdfa"].includes(
+          ["rotate", "compress", "flatten", "encrypt", "decrypt", "pdfa", "split"].includes(
             values.selectedFormatId
           )
         ) {
-          outExt = `_${values.selectedFormatId}.pdf`;
+          outExt = values.selectedFormatId === "split" ? "_split.zip" : `_${values.selectedFormatId}.pdf`;
         }
         const finalFileName = `${baseName}${outExt}`;
 
@@ -144,7 +237,7 @@ export default function PDFToConvertor() {
         abortControllerRef.current = null;
       }
     },
-    [file, selectedFormat, startConversion, completeConversion, setError]
+    [file, files, selectedFormat, pageManipulations, startConversion, completeConversion, setError]
   );
 
   const handleCategoryChange = useCallback(
@@ -190,9 +283,14 @@ export default function PDFToConvertor() {
   return (
     <div className="w-full max-w-7xl mx-auto mt-6 relative z-20">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: PDF Document Preview */}
-        <div className="lg:col-span-6">
+        {/* LEFT COLUMN: PDF Document Preview, Multi-File List & Visual Page Grid */}
+        <div className="lg:col-span-6 space-y-4">
           <PDFPreview file={file} onReset={reset} />
+          <PDFFileList />
+          <PDFPageGrid
+            file={file}
+            onPageManipulationsChange={setPageManipulations}
+          />
         </div>
 
         {/* RIGHT COLUMN: Conversion Form Controls */}

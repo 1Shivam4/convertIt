@@ -99,6 +99,12 @@ describe("ToolOptions", () => {
     buttons.forEach((btn) => expect(btn).toBeDisabled());
   });
 
+  it("renders page range input for 'split'", () => {
+    render(<ToolOptionsWrapper selectedFormatId="split" />);
+    expect(screen.getByPlaceholderText(/1-3, 5, 8-10/i)).toBeInTheDocument();
+    expect(screen.getByText(/Enter Page Range to Extract/i)).toBeInTheDocument();
+  });
+
   it("currently selected rotation angle button is visually highlighted", () => {
     render(<ToolOptionsWrapper selectedFormatId="rotate" rotateAngle="180" />);
     const btn180 = screen.getByText(/180° Clockwise/i);

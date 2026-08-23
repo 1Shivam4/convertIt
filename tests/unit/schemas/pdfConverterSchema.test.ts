@@ -95,8 +95,7 @@ describe("pdfConverterSchema — validation", () => {
   it("rejects an invalid rotateAngle value", () => {
     const result = pdfConverterSchema.safeParse({
       ...validBase,
-      // @ts-expect-error — intentionally bad value for test
-      rotateAngle: "45",
+      rotateAngle: "45" as any,
     });
     expect(result.success).toBe(false);
   });
@@ -104,8 +103,25 @@ describe("pdfConverterSchema — validation", () => {
   it("rejects an invalid pdfaVersion value", () => {
     const result = pdfConverterSchema.safeParse({
       ...validBase,
-      // @ts-expect-error — intentionally bad value for test
-      pdfaVersion: "PDF/A-4b",
+      pdfaVersion: "PDF/A-4b" as any,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts split with non-empty page range", () => {
+    const result = pdfConverterSchema.safeParse({
+      ...validBase,
+      selectedFormatId: "split",
+      splitSpan: "1-3, 5",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects split without page range", () => {
+    const result = pdfConverterSchema.safeParse({
+      ...validBase,
+      selectedFormatId: "split",
+      splitSpan: "",
     });
     expect(result.success).toBe(false);
   });

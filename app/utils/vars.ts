@@ -169,7 +169,10 @@ export interface PDFFormatOption {
     | "RotateCw"
     | "Layers"
     | "Lock"
-    | "LockOpen";
+    | "LockOpen"
+    | "Scissors"
+    | "Stamp"
+    | "Image";
   endpoint: string;
 }
 
@@ -184,12 +187,39 @@ export const PDF_FORMAT_OPTIONS: PDFFormatOption[] = [
     endpoint: "/api/pdf/convert?target=/forms/libreoffice/convert",
   },
   {
+    id: "png",
+    name: "PNG Image(s)",
+    extension: ".png",
+    category: "document",
+    description: "Export PDF pages as crisp PNG images (or ZIP archive)",
+    iconName: "Image",
+    endpoint: "client-side",
+  },
+  {
+    id: "jpg",
+    name: "JPG Image(s)",
+    extension: ".jpg",
+    category: "document",
+    description: "Export PDF pages as JPEG images (or ZIP archive)",
+    iconName: "Image",
+    endpoint: "client-side",
+  },
+  {
     id: "txt",
     name: "Plain Text",
     extension: ".txt",
     category: "document",
     description: "Extract clean raw unformatted text from all PDF pages",
     iconName: "FileType",
+    endpoint: "/api/pdf/convert?target=/forms/libreoffice/convert",
+  },
+  {
+    id: "csv",
+    name: "CSV Table",
+    extension: ".csv",
+    category: "document",
+    description: "Extract PDF tables directly into CSV spreadsheet format",
+    iconName: "FileSpreadsheet",
     endpoint: "/api/pdf/convert?target=/forms/libreoffice/convert",
   },
   {
@@ -263,6 +293,15 @@ export const PDF_FORMAT_OPTIONS: PDFFormatOption[] = [
     description: "Make form fields, signatures, and annotations non-editable",
     iconName: "Layers",
     endpoint: "/api/pdf/flatten",
+  },
+  {
+    id: "split",
+    name: "Split PDF",
+    extension: ".zip",
+    category: "tools",
+    description: "Extract specific page ranges into separate files",
+    iconName: "Scissors",
+    endpoint: "/api/pdf/split",
   },
   {
     id: "encrypt",

@@ -6,6 +6,7 @@ export const pdfConverterSchema = z
     rotateAngle: z.enum(["90", "180", "270"]),
     pdfaVersion: z.enum(["PDF/A-1b", "PDF/A-2b", "PDF/A-3b"]),
     password: z.string(),
+    splitSpan: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -20,6 +21,18 @@ export const pdfConverterSchema = z
     {
       message: "Please enter the PDF password.",
       path: ["password"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.selectedFormatId === "split") {
+        return Boolean(data.splitSpan && data.splitSpan.trim().length > 0);
+      }
+      return true;
+    },
+    {
+      message: "Please enter a valid page range (e.g. 1-3, 5).",
+      path: ["splitSpan"],
     }
   );
 

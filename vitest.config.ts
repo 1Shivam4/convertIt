@@ -13,7 +13,6 @@ export default defineConfig({
       reporter: ["text", "html"],
       include: ["app/lib/**", "app/store/**", "app/lib/schemas/**"],
     },
-    envFile: ".env.test",
     env: {
       GOTENBERG_URL: "http://localhost:8000",
     },

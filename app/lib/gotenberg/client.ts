@@ -27,7 +27,15 @@ export async function proxyToGotenberg(req: Request, defaultPath = "/") {
     return new Response(res.body, { status: res.status, headers: resHeaders });
   } catch (err: any) {
     const msg = err?.message ?? String(err);
-    return new Response(msg, { status: 502 });
+    return new Response(
+      JSON.stringify({
+        error: `Gotenberg conversion engine is offline at ${GOTENBERG_URL}. (${msg}). Start container: docker compose up -d`,
+      }),
+      {
+        status: 502,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 }
 

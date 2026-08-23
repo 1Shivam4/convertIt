@@ -125,5 +125,25 @@ export default function ToolOptions({
     );
   }
 
+  if (selectedFormatId === "split") {
+    return (
+      <div className="p-3.5 bg-white/5 border border-white/10 rounded-xl space-y-1.5">
+        <label className="block text-xs font-semibold text-slate-300">
+          Enter Page Range to Extract (e.g. 1-3, 5):
+        </label>
+        <input
+          type="text"
+          disabled={disabled}
+          placeholder="e.g. 1-3, 5, 8-10..."
+          {...register("splitSpan")}
+          className="w-full bg-[#0b0d11] border border-white/15 focus:border-red-500 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-red-500"
+        />
+        {errors.splitSpan && (
+          <p className="text-xs text-red-400 mt-1">{errors.splitSpan.message}</p>
+        )}
+      </div>
+    );
+  }
+
   return null;
 }
