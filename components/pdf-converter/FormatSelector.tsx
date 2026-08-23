@@ -12,6 +12,7 @@ import {
   RotateCw,
   Layers,
   Lock,
+  LockOpen,
 } from "lucide-react";
 import {
   PDF_FORMAT_OPTIONS,
@@ -19,7 +20,7 @@ import {
   PDFFormatOption,
 } from "@/app/utils/vars";
 
-const ICON_MAP = {
+const ICON_MAP: Record<string, React.ElementType> = {
   FileText,
   FileType: FileTypeIcon,
   FileCode,
@@ -30,6 +31,7 @@ const ICON_MAP = {
   RotateCw,
   Layers,
   Lock,
+  LockOpen,
 };
 
 interface FormatSelectorProps {

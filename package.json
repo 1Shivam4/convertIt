@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "db:studio": "prisma studio",
-    "worker": "bun run app/worker/index.ts"
+    "worker": "bun run app/worker/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:cov": "vitest run --coverage"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -38,17 +42,27 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@tanstack/react-query-devtools": "^5.101.4",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.1.0",
+    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/ui": "^4.1.11",
     "daisyui": "^5.7.9",
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
+    "jsdom": "^30.0.1",
+    "msw": "^2.15.0",
     "postcss": "^8.5.25",
     "prisma": "^7.9.1",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.11"
   },
   "ignoreScripts": [
     "sharp",
