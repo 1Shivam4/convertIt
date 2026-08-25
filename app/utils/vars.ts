@@ -331,3 +331,122 @@ export const PDF_CATEGORIES = [
 
 export const ROTATION_ANGLES = ["90", "180", "270"] as const;
 export const PDFA_VERSIONS = ["PDF/A-1b", "PDF/A-2b", "PDF/A-3b"] as const;
+
+export interface ImageFormatOption {
+  id: string;
+  name: string;
+  extension: string;
+  category: "raster" | "vector" | "tools";
+  description: string;
+  iconName: string;
+  endpoint: string;
+  mimeType: string;
+}
+
+export const IMAGE_FORMAT_OPTIONS: ImageFormatOption[] = [
+  {
+    id: "jpg",
+    name: "JPEG / JPG Image",
+    extension: ".jpg",
+    category: "raster",
+    description: "High compatibility standard web image format",
+    iconName: "Image",
+    endpoint: "/api/image/convert",
+    mimeType: "image/jpeg",
+  },
+  {
+    id: "png",
+    name: "PNG Image",
+    extension: ".png",
+    category: "raster",
+    description: "Lossless image with full alpha transparency support",
+    iconName: "Image",
+    endpoint: "/api/image/convert",
+    mimeType: "image/png",
+  },
+  {
+    id: "webp",
+    name: "WebP Image",
+    extension: ".webp",
+    category: "raster",
+    description: "Next-gen web format with superior compression ratio",
+    iconName: "Zap",
+    endpoint: "/api/image/convert",
+    mimeType: "image/webp",
+  },
+  {
+    id: "avif",
+    name: "AVIF Image",
+    extension: ".avif",
+    category: "raster",
+    description: "Ultra high efficiency image format with high quality",
+    iconName: "Zap",
+    endpoint: "/api/image/convert",
+    mimeType: "image/avif",
+  },
+  {
+    id: "gif",
+    name: "GIF Graphic",
+    extension: ".gif",
+    category: "raster",
+    description: "Graphics interchange format for static or simple animations",
+    iconName: "Film",
+    endpoint: "/api/image/convert",
+    mimeType: "image/gif",
+  },
+  {
+    id: "tiff",
+    name: "TIFF Document",
+    extension: ".tiff",
+    category: "raster",
+    description: "Uncompressed high dynamic range format for printing",
+    iconName: "Layers",
+    endpoint: "/api/image/convert",
+    mimeType: "image/tiff",
+  },
+  {
+    id: "bmp",
+    name: "BMP Bitmap",
+    extension: ".bmp",
+    category: "raster",
+    description: "Uncompressed raster bitmap graphics format",
+    iconName: "Grid",
+    endpoint: "/api/image/convert",
+    mimeType: "image/bmp",
+  },
+  {
+    id: "ico",
+    name: "ICO Favicon",
+    extension: ".ico",
+    category: "tools",
+    description: "Multi-resolution Windows icon format (16x16, 32x32, 48x48)",
+    iconName: "Sparkles",
+    endpoint: "/api/image/ico",
+    mimeType: "image/x-icon",
+  },
+  {
+    id: "compress-image",
+    name: "Compress Image",
+    extension: ".jpg",
+    category: "tools",
+    description: "Smart image compression to reduce file size significantly",
+    iconName: "Zap",
+    endpoint: "/api/image/compress",
+    mimeType: "image/jpeg",
+  },
+];
+
+export const IMAGE_CATEGORIES = [
+  { id: "all", label: "All Formats" },
+  { id: "raster", label: "Raster Images" },
+  { id: "tools", label: "Tools & Favicon" },
+] as const;
+
+export const IMAGE_FIT_MODES = [
+  { id: "cover", label: "Cover (Crop to fill)" },
+  { id: "contain", label: "Contain (Aspect fit)" },
+  { id: "fill", label: "Fill (Stretch)" },
+  { id: "inside", label: "Inside (Fit within bounds)" },
+  { id: "outside", label: "Outside (Cover min bounds)" },
+] as const;
+

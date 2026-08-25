@@ -5,6 +5,7 @@ import { CloudUpload, FileText, X, Loader2 } from "lucide-react";
 import { useConverterStore } from "../app/store/useFileDetectionStore";
 import { detectFileType } from "../app/lib/file/detect_file_types";
 import PDFToConvertor from "./PDFToConvertor";
+import ImageToConvertor from "./ImageToConvertor";
 
 export default function FileDropzone() {
   const { file, stage, sourceType, setFile, setSourceType, setError, reset } =
@@ -118,6 +119,14 @@ export default function FileDropzone() {
 
     if (isPdf) {
       return <PDFToConvertor />;
+    }
+
+    const isImage =
+      sourceType?.mimeType?.startsWith("image/") ||
+      file.type.startsWith("image/");
+
+    if (isImage) {
+      return <ImageToConvertor />;
     }
   }
 
