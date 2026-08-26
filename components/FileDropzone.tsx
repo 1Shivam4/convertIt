@@ -6,6 +6,7 @@ import { useConverterStore } from "../app/store/useFileDetectionStore";
 import { detectFileType } from "../app/lib/file/detect_file_types";
 import PDFToConvertor from "./PDFToConvertor";
 import ImageToConvertor from "./ImageToConvertor";
+import MediaToConvertor from "./MediaToConvertor";
 
 export default function FileDropzone() {
   const { file, stage, sourceType, setFile, setSourceType, setError, reset } =
@@ -104,7 +105,7 @@ export default function FileDropzone() {
     );
   }
 
-  // Render 2-Section PDF converter interface when PDF file is ready or being converted
+  // Render conversion interface when file is ready
   if (
     file &&
     (stage === "ready" ||
@@ -127,6 +128,16 @@ export default function FileDropzone() {
 
     if (isImage) {
       return <ImageToConvertor />;
+    }
+
+    const isMedia =
+      sourceType?.mimeType?.startsWith("video/") ||
+      sourceType?.mimeType?.startsWith("audio/") ||
+      file.type.startsWith("video/") ||
+      file.type.startsWith("audio/");
+
+    if (isMedia) {
+      return <MediaToConvertor />;
     }
   }
 

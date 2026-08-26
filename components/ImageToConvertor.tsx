@@ -14,12 +14,13 @@ export default function ImageToConvertor() {
   const hasFiles = files.length > 0;
 
   const [mode, setMode] = useState<"convert" | "crop">("convert");
-  const [activeCategory, setActiveCategory] = useState<"all" | "raster" | "tools">("all");
+  const [activeCategory, setActiveCategory] = useState<
+    "all" | "raster" | "tools"
+  >("all");
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-6">
-
       {/* ── STEP 1 — Upload ──────────────────────────────────────── */}
       <ImageDropzone />
 
@@ -55,10 +56,7 @@ export default function ImageToConvertor() {
 
       {/* ── CROP MODE ─────────────────────────────────────────────── */}
       {hasFiles && mode === "crop" && (
-        <ImageCropTool
-          file={files[0]}
-          onClose={() => setMode("convert")}
-        />
+        <ImageCropTool file={files[0]} onClose={() => setMode("convert")} />
       )}
 
       {/* ── CONVERT MODE ─────────────────────────────────────────── */}

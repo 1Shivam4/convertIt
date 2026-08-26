@@ -450,3 +450,153 @@ export const IMAGE_FIT_MODES = [
   { id: "outside", label: "Outside (Cover min bounds)" },
 ] as const;
 
+export interface MediaFormatOption {
+  id: string;
+  name: string;
+  extension: string;
+  category: "video" | "audio" | "tools";
+  description: string;
+  iconName: string;
+  endpoint: string;
+  mimeType: string;
+}
+
+export const MEDIA_FORMAT_OPTIONS: MediaFormatOption[] = [
+  {
+    id: "mp4",
+    name: "MP4 Video",
+    extension: ".mp4",
+    category: "video",
+    description: "Universal video format with high compression and compatibility",
+    iconName: "Video",
+    endpoint: "/api/media/convert",
+    mimeType: "video/mp4",
+  },
+  {
+    id: "webm",
+    name: "WEBM Video",
+    extension: ".webm",
+    category: "video",
+    description: "Next-gen open video format optimized for web browsers",
+    iconName: "Globe",
+    endpoint: "/api/media/convert",
+    mimeType: "video/webm",
+  },
+  {
+    id: "mov",
+    name: "MOV QuickTime",
+    extension: ".mov",
+    category: "video",
+    description: "Apple QuickTime high quality video format",
+    iconName: "Film",
+    endpoint: "/api/media/convert",
+    mimeType: "video/quicktime",
+  },
+  {
+    id: "avi",
+    name: "AVI Video",
+    extension: ".avi",
+    category: "video",
+    description: "Standard Audio Video Interleave container format",
+    iconName: "FileVideo",
+    endpoint: "/api/media/convert",
+    mimeType: "video/x-msvideo",
+  },
+  {
+    id: "mkv",
+    name: "MKV Matroska",
+    extension: ".mkv",
+    category: "video",
+    description: "Flexible container supporting multiple audio & subtitle tracks",
+    iconName: "Layers",
+    endpoint: "/api/media/convert",
+    mimeType: "video/x-matroska",
+  },
+  {
+    id: "gif",
+    name: "Animated GIF",
+    extension: ".gif",
+    category: "video",
+    description: "Convert video clip into an animated GIF graphic",
+    iconName: "Sparkles",
+    endpoint: "/api/media/convert",
+    mimeType: "image/gif",
+  },
+  {
+    id: "mp3",
+    name: "MP3 Audio",
+    extension: ".mp3",
+    category: "audio",
+    description: "Extract or convert audio into universal MP3 format",
+    iconName: "Music",
+    endpoint: "/api/media/convert",
+    mimeType: "audio/mpeg",
+  },
+  {
+    id: "wav",
+    name: "WAV Lossless Audio",
+    extension: ".wav",
+    category: "audio",
+    description: "Uncompressed waveform audio format for studio quality",
+    iconName: "Volume2",
+    endpoint: "/api/media/convert",
+    mimeType: "audio/wav",
+  },
+  {
+    id: "aac",
+    name: "AAC Audio",
+    extension: ".aac",
+    category: "audio",
+    description: "Advanced Audio Coding format with superior compression efficiency",
+    iconName: "Headphones",
+    endpoint: "/api/media/convert",
+    mimeType: "audio/aac",
+  },
+  {
+    id: "flac",
+    name: "FLAC Audio",
+    extension: ".flac",
+    category: "audio",
+    description: "Free Lossless Audio Codec for audiophile archive quality",
+    iconName: "Disc",
+    endpoint: "/api/media/convert",
+    mimeType: "audio/flac",
+  },
+  {
+    id: "ogg",
+    name: "OGG Vorbis Audio",
+    extension: ".ogg",
+    category: "audio",
+    description: "Open source compressed audio stream format",
+    iconName: "Radio",
+    endpoint: "/api/media/convert",
+    mimeType: "audio/ogg",
+  },
+  {
+    id: "compress-video",
+    name: "Compress Video",
+    extension: ".mp4",
+    category: "tools",
+    description: "Reduce video file size using smart constant rate encoding",
+    iconName: "Zap",
+    endpoint: "/api/media/convert",
+    mimeType: "video/mp4",
+  },
+];
+
+export const MEDIA_CATEGORIES = [
+  { id: "all", label: "All Media" },
+  { id: "video", label: "Video Formats" },
+  { id: "audio", label: "Audio Tracks" },
+  { id: "tools", label: "Tools & GIF" },
+] as const;
+
+export const MEDIA_RESOLUTIONS = [
+  { id: "original", label: "Original Resolution" },
+  { id: "1080p", label: "1080p (Full HD 1920x1080)" },
+  { id: "720p", label: "720p (HD 1280x720)" },
+  { id: "480p", label: "480p (SD 854x480)" },
+  { id: "360p", label: "360p (Mobile 640x360)" },
+] as const;
+
+

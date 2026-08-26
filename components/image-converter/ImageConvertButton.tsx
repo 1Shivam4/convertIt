@@ -1,7 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { ArrowRight, RefreshCw, CheckCircle2, Zap, Download } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import {
+  ArrowRight,
+  RefreshCw,
+  CheckCircle2,
+  Zap,
+  Download,
+} from "lucide-react";
 import { useConverterStore } from "@/app/store/useFileDetectionStore";
 import { useImageConversionStore } from "@/app/store/useImageConversionStore";
 import { IMAGE_FORMAT_OPTIONS } from "@/app/utils/vars";
@@ -13,8 +19,13 @@ function formatBytes(bytes: number): string {
 }
 
 export default function ImageConvertButton() {
-  const { files, startConversion, completeConversion, resetConversion, setError } =
-    useConverterStore();
+  const {
+    files,
+    startConversion,
+    completeConversion,
+    resetConversion,
+    setError,
+  } = useConverterStore();
 
   const store = useImageConversionStore();
 
@@ -22,23 +33,37 @@ export default function ImageConvertButton() {
   const [downloadFileName, setDownloadFileName] = useState("");
   const [convertedSize, setConvertedSize] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [fakeProgress, setFakeProgress] = useState(0);
+  const progressRef = useRef<NodeJS.Timeout | null>(null);
 
   const totalOriginalSize = files.reduce((a, f) => a + f.size, 0);
   const savingsPct =
     convertedSize && convertedSize < totalOriginalSize
-      ? Math.round(((totalOriginalSize - convertedSize) / totalOriginalSize) * 100)
+      ? Math.round(
+          ((totalOriginalSize - convertedSize) / totalOriginalSize) * 100,
+        )
       : null;
 
   const handleConvert = useCallback(async () => {
     if (files.length === 0) return;
 
-    const selectedOption = IMAGE_FORMAT_OPTIONS.find((f) => f.id === store.selectedFormatId);
+    const selectedOption = IMAGE_FORMAT_OPTIONS.find(
+      (f) => f.id === store.selectedFormatId,
+    );
     const endpoint = selectedOption?.endpoint || "/api/image/convert";
 
     setIsProcessing(true);
     setDownloadBlob(null);
     setConvertedSize(null);
     startConversion();
+
+    // Animate fake progress: fast to 80%, then slow until done
+    setFakeProgress(0);
+    let p = 0;
+    progressRef.current = setInterval(() => {
+      p = p < 70 ? p + 5 : p < 88 ? p + 1 : p;
+      setFakeProgress(p);
+    }, 120);
 
     try {
       const formData = new FormData();
@@ -57,7 +82,7 @@ export default function ImageConvertButton() {
           grayscale: store.grayscale,
           stripExif: store.stripExif,
           backgroundColor: store.backgroundColor,
-        })
+        }),
       );
       formData.append("quality", String(store.quality));
 
@@ -84,6 +109,9 @@ export default function ImageConvertButton() {
       toast.error(err?.message || "Conversion failed");
     } finally {
       setIsProcessing(false);
+      if (progressRef.current) clearInterval(progressRef.current);
+      setFakeProgress(100);
+      setTimeout(() => setFakeProgress(0), 600);
     }
   }, [files, store, startConversion, completeConversion, setError]);
 
@@ -111,9 +139,12 @@ export default function ImageConvertButton() {
           <CheckCircle2 className="w-5 h-5 text-emerald-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white">Conversion complete!</p>
+          <p className="text-sm font-semibold text-white">
+            Conversion complete!
+          </p>
           <p className="text-xs text-slate-400 mt-0.5">
-            {formatBytes(totalOriginalSize)} → {convertedSize ? formatBytes(convertedSize) : "ready"}
+            {formatBytes(totalOriginalSize)} →{" "}
+            {convertedSize ? formatBytes(convertedSize) : "ready"}
             {savingsPct !== null && savingsPct > 0 && (
               <span className="ml-2 inline-flex items-center gap-1 text-emerald-400 font-semibold">
                 <Zap className="w-3 h-3 fill-emerald-400" />
@@ -145,24 +176,44 @@ export default function ImageConvertButton() {
 
   // ── Convert Button ─────────────────────────────────────────────────────────
   return (
-    <button
-      type="button"
-      onClick={handleConvert}
-      disabled={isProcessing || files.length === 0}
-      className="w-full py-4 rounded-2xl font-bold text-base text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2.5 transition-all active:scale-[0.99]"
-    >
-      {isProcessing ? (
-        <>
-          <RefreshCw className="w-4 h-4 animate-spin" />
-          Converting {files.length > 1 ? `${files.length} images` : "image"}...
-        </>
-      ) : (
-        <>
-          Convert {files.length > 1 ? `${files.length} images` : "image"} to{" "}
-          {store.selectedFormatId.toUpperCase()}
-          <ArrowRight className="w-4 h-4" />
-        </>
+    <div className="space-y-3">
+      {isProcessing && (
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-xs">
+            <span className="text-slate-400">
+              Converting image{files.length > 1 ? `s (${files.length})` : ""}…
+            </span>
+            <span className="font-mono font-bold text-blue-400">
+              {fakeProgress}%
+            </span>
+          </div>
+          <div className="w-full h-1.5 bg-white/8 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-500 rounded-full transition-all duration-150"
+              style={{ width: `${fakeProgress}%` }}
+            />
+          </div>
+        </div>
       )}
-    </button>
+      <button
+        type="button"
+        onClick={handleConvert}
+        disabled={isProcessing || files.length === 0}
+        className="w-full py-4 rounded-2xl font-bold text-base text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2.5 transition-all active:scale-[0.99]"
+      >
+        {isProcessing ? (
+          <>
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            Converting {files.length > 1 ? `${files.length} images` : "image"}…
+          </>
+        ) : (
+          <>
+            Convert {files.length > 1 ? `${files.length} images` : "image"} to{" "}
+            {store.selectedFormatId.toUpperCase()}
+            <ArrowRight className="w-4 h-4" />
+          </>
+        )}
+      </button>
+    </div>
   );
 }

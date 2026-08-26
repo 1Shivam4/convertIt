@@ -1,7 +1,15 @@
 services:
+  # Gotenberg API Container - Chromium/LibreOffice PDF conversion engine
   gotenberg:
     image: gotenberg/gotenberg:8
-    container_name: gotenberg
+    container_name: convertit-gotenberg
     ports:
       - "8000:3000"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
