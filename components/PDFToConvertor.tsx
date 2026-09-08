@@ -51,7 +51,9 @@ export default function PDFToConvertor() {
     selectedPages: [],
   });
 
-  const [activeCategory, setActiveCategory] = useState<"all" | "document" | "tools">("all");
+  const [activeCategory, setActiveCategory] = useState<
+    "all" | "document" | "tools"
+  >("all");
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const {
@@ -103,10 +105,15 @@ export default function PDFToConvertor() {
         // Multi-file Merge handling powered by pdf-lib
         if (values.selectedFormatId === "merge") {
           const filesToMerge = files.length > 0 ? files : [file];
-          const buffers = await Promise.all(filesToMerge.map((f) => f.arrayBuffer()));
+          const buffers = await Promise.all(
+            filesToMerge.map((f) => f.arrayBuffer()),
+          );
           const mergedBytes = await mergePDFDocuments(buffers);
-          const resultBlob = new Blob([mergedBytes.buffer as ArrayBuffer], { type: "application/pdf" });
-          const baseName = file.name.substring(0, file.name.lastIndexOf(".")) || "merged";
+          const resultBlob = new Blob([mergedBytes.buffer as ArrayBuffer], {
+            type: "application/pdf",
+          });
+          const baseName =
+            file.name.substring(0, file.name.lastIndexOf(".")) || "merged";
           completeConversion(resultBlob, `${baseName}_merged.pdf`);
           return;
         }
@@ -137,37 +144,113 @@ export default function PDFToConvertor() {
           if (targetPages.length > 0) {
             const buffer = await file.arrayBuffer();
             const extractedBytes = await extractPDFPages(buffer, targetPages);
-            const resultBlob = new Blob([extractedBytes.buffer as ArrayBuffer], { type: "application/pdf" });
-            const baseName = file.name.substring(0, file.name.lastIndexOf(".")) || "document";
+            const resultBlob = new Blob(
+              [extractedBytes.buffer as ArrayBuffer],
+              { type: "application/pdf" },
+            );
+            const baseName =
+              file.name.substring(0, file.name.lastIndexOf(".")) || "document";
             completeConversion(resultBlob, `${baseName}_split.pdf`);
             return;
           }
         }
 
         // PDF to PNG / JPG Image export powered by pdfjs-dist & JSZip
-        if (values.selectedFormatId === "png" || values.selectedFormatId === "jpg") {
+        if (
+          values.selectedFormatId === "png" ||
+          values.selectedFormatId === "jpg"
+        ) {
           const format = values.selectedFormatId === "jpg" ? "jpeg" : "png";
           const buffer = await file.arrayBuffer();
           const { blob, isZip } = await renderPdfPagesToImages(buffer, format);
-          const baseName = file.name.substring(0, file.name.lastIndexOf(".")) || "document";
+          const baseName =
+            file.name.substring(0, file.name.lastIndexOf(".")) || "document";
           const ext = isZip ? "zip" : format === "jpeg" ? "jpg" : "png";
           completeConversion(blob, `${baseName}_images.${ext}`);
           return;
         }
 
+        // HTML → PDF: send htmlContent as index.html file to Gotenberg Chromium
+        if (values.selectedFormatId === "html-to-pdf") {
+          const html = values.htmlContent?.trim() || "";
+          if (!html) {
+            setError("Please enter HTML content.");
+            return;
+          }
+          const htmlBlob = new Blob([html], { type: "text/html" });
+          const htmlFile = new File([htmlBlob], "index.html", {
+            type: "text/html",
+          });
+          const formData = new FormData();
+          formData.append("files", htmlFile, "index.html");
+          const response = await fetch("/api/pdf/html-to-pdf", {
+            method: "POST",
+            body: formData,
+            signal: controller.signal,
+          });
+          if (!response.ok)
+            throw new Error(
+              await response.text().catch(() => "HTML to PDF failed"),
+            );
+          completeConversion(await response.blob(), "converted.pdf");
+          return;
+        }
+
+        // Markdown → PDF: wrap markdown in HTML template, send to Gotenberg Chromium
+        if (values.selectedFormatId === "markdown-to-pdf") {
+          const md = values.markdownContent?.trim() || "";
+          if (!md) {
+            setError("Please enter Markdown content.");
+            return;
+          }
+          // Gotenberg's markdown endpoint needs an index.html wrapper + a .md file
+          const htmlWrapper = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:sans-serif;max-width:800px;margin:40px auto;padding:0 24px;line-height:1.6}pre{background:#f4f4f4;padding:12px;border-radius:6px;overflow-x:auto}code{background:#f4f4f4;padding:2px 4px;border-radius:3px}</style></head><body></body></html>`;
+          const indexBlob = new Blob([htmlWrapper], { type: "text/html" });
+          const mdBlob = new Blob([md], { type: "text/markdown" });
+          const formData = new FormData();
+          formData.append(
+            "files",
+            new File([indexBlob], "index.html", { type: "text/html" }),
+            "index.html",
+          );
+          formData.append(
+            "files",
+            new File([mdBlob], "document.md", { type: "text/markdown" }),
+            "document.md",
+          );
+          const response = await fetch("/api/pdf/markdown-to-pdf", {
+            method: "POST",
+            body: formData,
+            signal: controller.signal,
+          });
+          if (!response.ok)
+            throw new Error(
+              await response.text().catch(() => "Markdown to PDF failed"),
+            );
+          completeConversion(await response.blob(), "document.pdf");
+          return;
+        }
+
         let processedFile = file;
-        const hasRotations = Object.keys(pageManipulations.pageRotations).length > 0;
+        const hasRotations =
+          Object.keys(pageManipulations.pageRotations).length > 0;
         const hasDeletions = pageManipulations.deletedPages.length > 0;
 
         if (hasRotations || hasDeletions) {
           let buffer = await file.arrayBuffer();
           if (hasDeletions) {
-            buffer = (await deletePDFPages(buffer, pageManipulations.deletedPages)).buffer as ArrayBuffer;
+            buffer = (
+              await deletePDFPages(buffer, pageManipulations.deletedPages)
+            ).buffer as ArrayBuffer;
           }
           if (hasRotations) {
-            buffer = (await rotatePDFPages(buffer, pageManipulations.pageRotations)).buffer as ArrayBuffer;
+            buffer = (
+              await rotatePDFPages(buffer, pageManipulations.pageRotations)
+            ).buffer as ArrayBuffer;
           }
-          processedFile = new File([buffer], file.name, { type: "application/pdf" });
+          processedFile = new File([buffer], file.name, {
+            type: "application/pdf",
+          });
         }
 
         const formData = new FormData();
@@ -192,6 +275,40 @@ export default function PDFToConvertor() {
         } else if (values.selectedFormatId === "split") {
           formData.append("mode", "intervals");
           formData.append("span", values.splitSpan || "1");
+        } else if (values.selectedFormatId === "watermark") {
+          // Generate a simple watermark PDF using pdf-lib and send it as the overlay
+          const { PDFDocument, rgb, degrees } = await import("pdf-lib");
+          const watermarkText = values.watermarkText || "CONFIDENTIAL";
+          const overlayDoc = await PDFDocument.create();
+          // A4 page size
+          const page = overlayDoc.addPage([595, 842]);
+          const { width, height } = page.getSize();
+          page.drawText(watermarkText, {
+            x: width / 2 - watermarkText.length * 8,
+            y: height / 2,
+            size: 52,
+            color: rgb(0.75, 0.75, 0.75),
+            opacity: 0.35,
+            rotate: degrees(45),
+          });
+          const overlayBytes = await overlayDoc.save();
+          const overlayFile = new File(
+            [overlayBytes.buffer as ArrayBuffer],
+            "watermark.pdf",
+            { type: "application/pdf" },
+          );
+          formData.append("files", overlayFile, "watermark.pdf");
+        } else if (values.selectedFormatId === "stamp") {
+          // Stamp requires a second PDF file uploaded by the user
+          const stampInput = document.querySelector<HTMLInputElement>(
+            "input[type=file][accept='.pdf,application/pdf']",
+          );
+          const stampFile = stampInput?.files?.[0];
+          if (!stampFile) {
+            setError("Please upload a stamp PDF file.");
+            return;
+          }
+          formData.append("files", stampFile, stampFile.name);
         }
 
         const response = await fetch(url, {
@@ -205,7 +322,7 @@ export default function PDFToConvertor() {
             .text()
             .catch(() => "Conversion failed");
           throw new Error(
-            errText || `Server responded with status ${response.status}`
+            errText || `Server responded with status ${response.status}`,
           );
         }
 
@@ -215,11 +332,22 @@ export default function PDFToConvertor() {
           file.name.substring(0, file.name.lastIndexOf(".")) || file.name;
         let outExt = targetFormatDef.extension;
         if (
-          ["rotate", "compress", "flatten", "encrypt", "decrypt", "pdfa", "split"].includes(
-            values.selectedFormatId
-          )
+          [
+            "rotate",
+            "compress",
+            "flatten",
+            "encrypt",
+            "decrypt",
+            "pdfa",
+            "split",
+            "watermark",
+            "stamp",
+          ].includes(values.selectedFormatId)
         ) {
-          outExt = values.selectedFormatId === "split" ? "_split.zip" : `_${values.selectedFormatId}.pdf`;
+          outExt =
+            values.selectedFormatId === "split"
+              ? "_split.zip"
+              : `_${values.selectedFormatId}.pdf`;
         }
         const finalFileName = `${baseName}${outExt}`;
 
@@ -231,27 +359,35 @@ export default function PDFToConvertor() {
         }
         console.error("PDF conversion error:", err);
         setError(
-          err?.message || "Failed to convert file. Please check server status."
+          err?.message || "Failed to convert file. Please check server status.",
         );
       } finally {
         abortControllerRef.current = null;
       }
     },
-    [file, files, selectedFormat, pageManipulations, startConversion, completeConversion, setError]
+    [
+      file,
+      files,
+      selectedFormat,
+      pageManipulations,
+      startConversion,
+      completeConversion,
+      setError,
+    ],
   );
 
   const handleCategoryChange = useCallback(
     (category: "all" | "document" | "tools") => {
       setActiveCategory(category);
     },
-    []
+    [],
   );
 
   const handleSelectFormat = useCallback(
     (id: string) => {
       setValue("selectedFormatId", id);
     },
-    [setValue]
+    [setValue],
   );
 
   // Global Enter Key Listener to trigger conversion submit
@@ -263,8 +399,7 @@ export default function PDFToConvertor() {
         file
       ) {
         const activeElem = document.activeElement;
-        const isPasswordInput =
-          activeElem?.getAttribute("type") === "password";
+        const isPasswordInput = activeElem?.getAttribute("type") === "password";
         if (!isPasswordInput) {
           e.preventDefault();
           handleSubmit(onSubmit)();

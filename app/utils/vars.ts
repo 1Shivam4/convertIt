@@ -8,97 +8,79 @@ export const navbarItems: NavbarItemsProps[] = [
     itemsList: [
       {
         name: "Compress PDF",
-        location: "/tools/compress-pdf",
+        location: "/tools/convert-pdf",
         icon: "/icons/compress.svg",
         description: "Reduce PDF file size while keeping quality",
       },
       {
         name: "Merge PDF",
-        location: "/tools/merge-pdf",
+        location: "/tools/convert-pdf",
         icon: "/icons/merge-pdf.svg",
         description: "Combine multiple PDFs into one file",
       },
       {
         name: "Split PDF",
-        location: "/tools/split-pdf",
+        location: "/tools/convert-pdf",
         icon: "/icons/split-pdf.svg",
         description: "Extract pages into separate PDF files",
       },
       {
-        name: "Compare PDF",
-        location: "/tools/compare-pdf",
-        icon: "/icons/compare_pdf.svg",
-        description: "Compare two PDFs and highlight differences",
-      },
-      {
-        name: "Scan to PDF",
-        location: "/tools/scan-pdf",
-        icon: "/icons/scan_pdf.svg",
-        description: "Convert scanned images into a searchable PDF",
-      },
-      {
         name: "Protect PDF",
-        location: "/tools/protect-pdf",
+        location: "/tools/convert-pdf",
         icon: "/icons/file_lock.svg",
         description: "Add a password to secure your PDF",
       },
       {
         name: "PDF to JPG",
-        location: "/tools/pdf-to-jpg",
+        location: "/tools/convert-pdf",
         icon: "/icons/pdf_to_jpg.svg",
         description: "Convert PDF pages into JPG images",
       },
       {
-        name: "JPG to PDF",
-        location: "/tools/jpg-to-pdf",
-        icon: "/icons/jpg_to_pdf.svg",
-        description: "Convert JPG images into a PDF file",
-      },
-      {
         name: "PDF to Word",
-        location: "/tools/pdf-to-word",
+        location: "/tools/convert-pdf",
         icon: "/icons/pdf_to_word.svg",
         description: "Convert PDF into an editable Word document",
       },
       {
         name: "Word to PDF",
-        location: "/tools/word-to-pdf",
+        location: "/tools/convert-pdf",
         icon: "/icons/word_2_pdf.svg",
         description: "Convert Word documents into PDF",
       },
       {
         name: "PDF to PPT",
-        location: "/tools/pdf-to-ppt",
+        location: "/tools/convert-pdf",
         icon: "/icons/pdf_to_ppt.svg",
         description: "Convert PDF into a PowerPoint presentation",
       },
       {
         name: "PPT to PDF",
-        location: "/tools/ppt-to-pdf",
+        location: "/tools/convert-pdf",
         icon: "/icons/ppt_2_pdf.svg",
         description: "Convert PowerPoint slides into PDF",
       },
       {
         name: "PDF to Excel",
-        location: "/tools/pdf-to-excel",
+        location: "/tools/convert-pdf",
         icon: "/icons/pdf-to-excel.svg",
         description: "Convert PDF tables into an Excel spreadsheet",
       },
       {
         name: "Excel to PDF",
-        location: "/tools/excel-to-pdf",
+        location: "/tools/convert-pdf",
         icon: "/icons/excel_2_pdf.svg",
         description: "Convert Excel spreadsheets into PDF",
       },
       {
         name: "HTML to PDF",
-        location: "/tools/html-to-pdf",
+        location: "/tools/convert-pdf",
         icon: "/icons/html_to_pdf.svg",
         description: "Convert web pages or HTML files into PDF",
       },
       {
         name: "PDF to Markdown",
-        location: "/tools/pdf-to-md",
+        location: "/tools/convert-pdf",
         icon: "/icons/pdf_to_md.svg",
         description: "Convert PDF content into Markdown format",
       },
@@ -172,7 +154,10 @@ export interface PDFFormatOption {
     | "LockOpen"
     | "Scissors"
     | "Stamp"
-    | "Image";
+    | "Image"
+    | "Droplets"
+    | "FileCode"
+    | "Globe";
   endpoint: string;
 }
 
@@ -182,7 +167,8 @@ export const PDF_FORMAT_OPTIONS: PDFFormatOption[] = [
     name: "Word Document",
     extension: ".docx",
     category: "document",
-    description: "Convert PDF text & tables into editable Microsoft Word format",
+    description:
+      "Convert PDF text & tables into editable Microsoft Word format",
     iconName: "FileText",
     endpoint: "/api/pdf/convert?target=/forms/libreoffice/convert",
   },
@@ -320,6 +306,43 @@ export const PDF_FORMAT_OPTIONS: PDFFormatOption[] = [
     description: "Remove password protection from a PDF you own",
     iconName: "LockOpen",
     endpoint: "/api/pdf/decrypt",
+  },
+  {
+    id: "watermark",
+    name: "Watermark PDF",
+    extension: ".pdf",
+    category: "tools",
+    description: "Stamp a diagonal text watermark across every page of the PDF",
+    iconName: "Droplets",
+    endpoint: "/api/pdf/watermark",
+  },
+  {
+    id: "stamp",
+    name: "Stamp PDF",
+    extension: ".pdf",
+    category: "tools",
+    description: "Overlay a stamp PDF on top of every page of the document",
+    iconName: "Stamp",
+    endpoint: "/api/pdf/stamp",
+  },
+  {
+    id: "html-to-pdf",
+    name: "HTML to PDF",
+    extension: ".pdf",
+    category: "document",
+    description:
+      "Convert raw HTML markup into a styled PDF via Chromium render",
+    iconName: "Globe",
+    endpoint: "/api/pdf/html-to-pdf",
+  },
+  {
+    id: "markdown-to-pdf",
+    name: "Markdown to PDF",
+    extension: ".pdf",
+    category: "document",
+    description: "Convert Markdown text into a clean, readable PDF document",
+    iconName: "FileCode",
+    endpoint: "/api/pdf/markdown-to-pdf",
   },
 ];
 
@@ -467,7 +490,8 @@ export const MEDIA_FORMAT_OPTIONS: MediaFormatOption[] = [
     name: "MP4 Video",
     extension: ".mp4",
     category: "video",
-    description: "Universal video format with high compression and compatibility",
+    description:
+      "Universal video format with high compression and compatibility",
     iconName: "Video",
     endpoint: "/api/media/convert",
     mimeType: "video/mp4",
@@ -507,7 +531,8 @@ export const MEDIA_FORMAT_OPTIONS: MediaFormatOption[] = [
     name: "MKV Matroska",
     extension: ".mkv",
     category: "video",
-    description: "Flexible container supporting multiple audio & subtitle tracks",
+    description:
+      "Flexible container supporting multiple audio & subtitle tracks",
     iconName: "Layers",
     endpoint: "/api/media/convert",
     mimeType: "video/x-matroska",
@@ -547,7 +572,8 @@ export const MEDIA_FORMAT_OPTIONS: MediaFormatOption[] = [
     name: "AAC Audio",
     extension: ".aac",
     category: "audio",
-    description: "Advanced Audio Coding format with superior compression efficiency",
+    description:
+      "Advanced Audio Coding format with superior compression efficiency",
     iconName: "Headphones",
     endpoint: "/api/media/convert",
     mimeType: "audio/aac",
@@ -598,5 +624,3 @@ export const MEDIA_RESOLUTIONS = [
   { id: "480p", label: "480p (SD 854x480)" },
   { id: "360p", label: "360p (Mobile 640x360)" },
 ] as const;
-
-

@@ -9,8 +9,16 @@ import ImageToConvertor from "./ImageToConvertor";
 import MediaToConvertor from "./MediaToConvertor";
 
 export default function FileDropzone() {
-  const { file, stage, sourceType, setFile, setSourceType, setError, reset } =
-    useConverterStore();
+  const {
+    file,
+    stage,
+    sourceType,
+    setFile,
+    addFiles,
+    setSourceType,
+    setError,
+    reset,
+  } = useConverterStore();
 
   const [isDragging, setIsDragging] = useState(false);
 
@@ -55,25 +63,43 @@ export default function FileDropzone() {
 
     setIsDragging(false);
 
-    const file = e.dataTransfer.files?.[0];
+    const dropped = Array.from(e.dataTransfer.files);
+    if (dropped.length === 0) return;
 
-    if (!file) {
+    // Multi-file drop: if every file is a PDF, load them all at once
+    // and skip per-file MIME detection (type is already known)
+    const allPDFs = dropped.every(
+      (f) =>
+        f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"),
+    );
+
+    if (dropped.length > 1 && allPDFs) {
+      addFiles(dropped);
+      setSourceType({ extension: "pdf", mimeType: "application/pdf" });
       return;
     }
 
-    await processFile(file);
+    // Single file (or mixed drop) — use normal detection on the first file
+    await processFile(dropped[0]);
   };
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const selected = Array.from(e.target.files ?? []);
+    if (selected.length === 0) return;
 
-    if (!file) {
-      return;
+    const allPDFs = selected.every(
+      (f) =>
+        f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"),
+    );
+
+    if (selected.length > 1 && allPDFs) {
+      addFiles(selected);
+      setSourceType({ extension: "pdf", mimeType: "application/pdf" });
+    } else {
+      await processFile(selected[0]);
     }
 
-    await processFile(file);
-
-    // Allows selecting the same file again.
+    // Allow re-selecting the same file(s) again
     e.target.value = "";
   };
 
@@ -139,13 +165,47 @@ export default function FileDropzone() {
     if (isMedia) {
       return <MediaToConvertor />;
     }
+
+    // Office documents — route to PDF workspace where Gotenberg converts them
+    const OFFICE_MIME_TYPES = [
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // docx
+      "application/msword",                                                       // doc
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation", // pptx
+      "application/vnd.ms-powerpoint",                                            // ppt
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",        // xlsx
+      "application/vnd.ms-excel",                                                 // xls
+      "application/vnd.oasis.opendocument.text",                                  // odt
+      "application/vnd.oasis.opendocument.spreadsheet",                           // ods
+      "application/vnd.oasis.opendocument.presentation",                          // odp
+      "application/rtf",
+      "text/rtf",
+      "application/epub+zip",
+      "text/plain",
+      "text/csv",
+    ];
+    const OFFICE_EXTENSIONS = [
+      "docx", "doc", "pptx", "ppt", "xlsx", "xls",
+      "odt", "ods", "odp", "rtf", "epub", "txt", "csv",
+    ];
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+
+    const isOfficeDoc =
+      OFFICE_MIME_TYPES.includes(file.type) ||
+      OFFICE_MIME_TYPES.includes(sourceType?.mimeType ?? "") ||
+      OFFICE_EXTENSIONS.includes(ext);
+
+    if (isOfficeDoc) {
+      return <PDFToConvertor />;
+    }
   }
+
 
   return (
     <div className="w-full max-w-7xl mx-auto mt-8 relative z-20">
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         onChange={handleFileChange}
         className="hidden"
       />
