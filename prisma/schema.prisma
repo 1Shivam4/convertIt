@@ -5,17 +5,71 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Better Auth required models
+// ─────────────────────────────────────────────────────────────────────────────
+
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  name      String?
-  createdAt DateTime  @default(now())
-  jobs      Job[]
-  apiKeys   ApiKey[]
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime
+  updatedAt     DateTime
+
+  sessions      Session[]
+  accounts      Account[]
+
+  // ConvertIt relations
+  jobs          Job[]
+  apiKeys       ApiKey[]
 }
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ConvertIt application models
+// ─────────────────────────────────────────────────────────────────────────────
 
 model Job {
   id           String       @id @default(cuid())
@@ -34,17 +88,17 @@ model File {
   id        String   @id @default(cuid())
   jobId     String
   job       Job      @relation(fields: [jobId], references: [id])
-  path      String   // R2 path: uploads/ or outputs/
+  path      String
   size      Int
   mimeType  String
   createdAt DateTime @default(now())
 }
 
 model Conversion {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   jobId      String
-  job        Job      @relation(fields: [jobId], references: [id])
-  engine     String   // sharp, ffmpeg, libreoffice, etc.
+  job        Job       @relation(fields: [jobId], references: [id])
+  engine     String
   startedAt  DateTime?
   finishedAt DateTime?
   error      String?

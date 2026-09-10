@@ -1,8 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import NavItems from "./NavItems";
-import { Moon } from "lucide-react";
 import ToggleTheme from "./ToggleTheme";
+import NavbarAuth from "./NavbarAuth";
 
 export default function Navbar() {
   return (
@@ -29,19 +29,7 @@ export default function Navbar() {
 
         {/* Action Buttons & Theme Switcher */}
         <div className="flex items-center gap-3 sm:gap-4">
-          <Link
-            href="/login"
-            className="text-sm font-medium text-slate-300 hover:text-white transition-colors px-3 py-1.5"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/signup"
-            className="text-sm font-medium bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md transition-all shadow-sm hover:shadow-red-600/20"
-          >
-            Sign up
-          </Link>
-
+          <NavbarAuth />
           <ToggleTheme />
         </div>
       </div>

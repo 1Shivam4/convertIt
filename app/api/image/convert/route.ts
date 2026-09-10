@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { processImageTransform, ImageTransformOptions } from "@/app/lib/image/sharpUtils";
+import { recordUserJob } from "@/app/lib/auth-helpers";
 import JSZip from "jszip";
 
 export async function POST(req: NextRequest) {
@@ -29,6 +30,16 @@ export async function POST(req: NextRequest) {
 
       const originalName = file.name.substring(0, file.name.lastIndexOf(".")) || "converted";
       const downloadFilename = `${originalName}${result.extension}`;
+
+      // Log conversion job if user is authenticated (session or API key)
+      const srcExt = file.name.split(".").pop()?.toLowerCase() || "img";
+      recordUserJob(req, {
+        sourceFormat: srcExt,
+        targetFormat: parsedOptions.targetFormat,
+        engine: "sharp",
+        status: "COMPLETED",
+        fileSize: result.buffer.byteLength,
+      });
 
       return new Response(new Uint8Array(result.buffer), {
         status: 200,
