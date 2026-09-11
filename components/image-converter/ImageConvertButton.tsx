@@ -87,7 +87,12 @@ export default function ImageConvertButton() {
       formData.append("quality", String(store.quality));
 
       const res = await fetch(endpoint, { method: "POST", body: formData });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        throw new Error(
+          errJson?.error || (await res.text()) || "Conversion failed",
+        );
+      }
 
       const blob = await res.blob();
       setDownloadBlob(blob);

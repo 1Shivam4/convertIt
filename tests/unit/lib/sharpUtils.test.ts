@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import sharp from "sharp";
-import { processImageTransform, generateIcoFavicon } from "@/app/lib/image/sharpUtils";
+import {
+  processImageTransform,
+  generateIcoFavicon,
+} from "@/app/lib/image/sharpUtils";
 
 describe("sharpUtils", () => {
   it("converts a sample image to JPEG with custom quality and resizing", async () => {
@@ -56,5 +59,30 @@ describe("sharpUtils", () => {
     const meta = await sharp(result.buffer).metadata();
     expect(meta.width).toBe(32);
     expect(meta.height).toBe(32);
+  });
+
+  it("converts an image to BMP format using custom encoder", async () => {
+    const inputBuffer = await sharp({
+      create: {
+        width: 40,
+        height: 40,
+        channels: 4,
+        background: { r: 100, g: 200, b: 50, alpha: 1 },
+      },
+    })
+      .png()
+      .toBuffer();
+
+    const result = await processImageTransform(inputBuffer, {
+      targetFormat: "bmp",
+      width: 20,
+      height: 20,
+    });
+
+    expect(result.contentType).toBe("image/bmp");
+    expect(result.extension).toBe(".bmp");
+    expect(result.buffer).toBeInstanceOf(Buffer);
+    // BMP header starts with 'BM' magic bytes
+    expect(result.buffer.toString("ascii", 0, 2)).toBe("BM");
   });
 });

@@ -1,14 +1,27 @@
 "use client";
 
 import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
-import { CloudUpload, FileText, X, Loader2 } from "lucide-react";
+import { CloudUpload, FileText, X, Loader2, Zap } from "lucide-react";
 import { useConverterStore } from "../app/store/useFileDetectionStore";
 import { detectFileType } from "../app/lib/file/detect_file_types";
+import { useSession } from "../app/lib/auth-client";
+import {
+  PLAN_LIMITS,
+  formatFileSize,
+  getUpgradeMessage,
+  type Plan,
+} from "../app/lib/plans";
 import PDFToConvertor from "./PDFToConvertor";
 import ImageToConvertor from "./ImageToConvertor";
 import MediaToConvertor from "./MediaToConvertor";
 
 export default function FileDropzone() {
+  const { data: session } = useSession();
+  const userPlan: Plan = session?.user
+    ? (((session.user as any).plan as Plan) ?? "FREE")
+    : "GUEST";
+  const planLimits = PLAN_LIMITS[userPlan];
+
   const {
     file,
     stage,
@@ -24,7 +37,19 @@ export default function FileDropzone() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const validateFileSize = (filesToCheck: File[]): boolean => {
+    for (const f of filesToCheck) {
+      if (f.size > planLimits.maxFileSizeBytes) {
+        setError(getUpgradeMessage(userPlan, f.size));
+        return false;
+      }
+    }
+    return true;
+  };
+
   const processFile = async (file: File) => {
+    if (!validateFileSize([file])) return;
+
     try {
       setFile(file);
 
@@ -74,6 +99,7 @@ export default function FileDropzone() {
     );
 
     if (dropped.length > 1 && allPDFs) {
+      if (!validateFileSize(dropped)) return;
       addFiles(dropped);
       setSourceType({ extension: "pdf", mimeType: "application/pdf" });
       return;
@@ -93,6 +119,7 @@ export default function FileDropzone() {
     );
 
     if (selected.length > 1 && allPDFs) {
+      if (!validateFileSize(selected)) return;
       addFiles(selected);
       setSourceType({ extension: "pdf", mimeType: "application/pdf" });
     } else {
@@ -169,14 +196,14 @@ export default function FileDropzone() {
     // Office documents — route to PDF workspace where Gotenberg converts them
     const OFFICE_MIME_TYPES = [
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // docx
-      "application/msword",                                                       // doc
+      "application/msword", // doc
       "application/vnd.openxmlformats-officedocument.presentationml.presentation", // pptx
-      "application/vnd.ms-powerpoint",                                            // ppt
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",        // xlsx
-      "application/vnd.ms-excel",                                                 // xls
-      "application/vnd.oasis.opendocument.text",                                  // odt
-      "application/vnd.oasis.opendocument.spreadsheet",                           // ods
-      "application/vnd.oasis.opendocument.presentation",                          // odp
+      "application/vnd.ms-powerpoint", // ppt
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // xlsx
+      "application/vnd.ms-excel", // xls
+      "application/vnd.oasis.opendocument.text", // odt
+      "application/vnd.oasis.opendocument.spreadsheet", // ods
+      "application/vnd.oasis.opendocument.presentation", // odp
       "application/rtf",
       "text/rtf",
       "application/epub+zip",
@@ -184,8 +211,19 @@ export default function FileDropzone() {
       "text/csv",
     ];
     const OFFICE_EXTENSIONS = [
-      "docx", "doc", "pptx", "ppt", "xlsx", "xls",
-      "odt", "ods", "odp", "rtf", "epub", "txt", "csv",
+      "docx",
+      "doc",
+      "pptx",
+      "ppt",
+      "xlsx",
+      "xls",
+      "odt",
+      "ods",
+      "odp",
+      "rtf",
+      "epub",
+      "txt",
+      "csv",
     ];
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
 
@@ -198,7 +236,6 @@ export default function FileDropzone() {
       return <PDFToConvertor />;
     }
   }
-
 
   return (
     <div className="w-full max-w-7xl mx-auto mt-8 relative z-20">
@@ -248,6 +285,16 @@ export default function FileDropzone() {
             <p className="text-sm md:text-base text-slate-400">
               or drop your file here.
             </p>
+
+            <div className="pt-2 flex items-center justify-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-slate-300">
+                <Zap className="w-3.5 h-3.5 text-yellow-400" />
+                {planLimits.label} Plan: Max{" "}
+                {formatFileSize(planLimits.maxFileSizeBytes)}
+                {userPlan === "GUEST" && " (Sign up for 40 MB)"}
+                {userPlan === "FREE" && " (Upgrade for 200 MB)"}
+              </span>
+            </div>
           </div>
 
           <button

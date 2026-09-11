@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
-import { convertMediaWithProgress, FFmpegOptions } from "@/app/lib/media/ffmpegUtils";
+import {
+  convertMediaWithProgress,
+  FFmpegOptions,
+} from "@/app/lib/media/ffmpegUtils";
 import { mediaConverterSchema } from "@/app/lib/schemas/mediaConverterSchema";
 import { MEDIA_FORMAT_OPTIONS } from "@/app/utils/vars";
+import { guardFileSize, fileSizeErrorResponse } from "@/app/lib/file-guard";
 import { existsSync } from "fs";
 import { join } from "path";
 import { execFile } from "child_process";
@@ -15,25 +19,40 @@ const GIF_MAX_DURATION_S = 15;
 
 async function probeDurationSeconds(buffer: Buffer): Promise<number | null> {
   try {
-    const ffmpegStatic = (await import("ffmpeg-static")).default as string | null;
-    const localStaticPath = join(process.cwd(), "node_modules", "ffmpeg-static", "ffmpeg");
+    const ffmpegStatic = (await import("ffmpeg-static")).default as
+      | string
+      | null;
+    const localStaticPath = join(
+      process.cwd(),
+      "node_modules",
+      "ffmpeg-static",
+      "ffmpeg",
+    );
     const ffmpegBin = existsSync(localStaticPath)
       ? localStaticPath
-      : (ffmpegStatic && existsSync(ffmpegStatic) ? ffmpegStatic : "/usr/local/bin/ffmpeg");
+      : ffmpegStatic && existsSync(ffmpegStatic)
+        ? ffmpegStatic
+        : "/usr/local/bin/ffmpeg";
 
     const probePath = join(tmpdir(), `convertit_probe_${Date.now()}`);
     await writeFile(probePath, buffer);
     try {
-      const { stderr } = await execFileAsync(ffmpegBin, ["-i", probePath], {
+      const { stderr } = (await execFileAsync(ffmpegBin, ["-i", probePath], {
         timeout: 10000,
-        env: { ...process.env, PATH: `${process.env.PATH || ""}:/usr/local/bin:/usr/bin:/bin` },
-      }).catch((e: any) => ({ stderr: (e.stderr as string) ?? "" })) as any;
+        env: {
+          ...process.env,
+          PATH: `${process.env.PATH || ""}:/usr/local/bin:/usr/bin:/bin`,
+        },
+      }).catch((e: any) => ({ stderr: (e.stderr as string) ?? "" }))) as any;
       const m = (stderr as string).match(/Duration:\s*(\d+):(\d+):([\d.]+)/);
-      if (m) return parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseFloat(m[3]);
+      if (m)
+        return parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseFloat(m[3]);
     } finally {
       unlink(probePath).catch(() => {});
     }
-  } catch { /* ignore probe errors */ }
+  } catch {
+    /* ignore probe errors */
+  }
   return null;
 }
 
@@ -42,41 +61,59 @@ export async function POST(req: Request) {
 
   const sendEvent = (
     controller: ReadableStreamDefaultController,
-    data: object
+    data: object,
   ) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
 
   let formData: FormData;
   try {
     formData = await req.formData();
   } catch {
-    return NextResponse.json({ error: "Failed to parse form data" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Failed to parse form data" },
+      { status: 400 },
+    );
   }
 
   const file = formData.get("file") as File | null;
   const optionsJson = formData.get("options") as string | null;
 
   if (!file) {
-    return NextResponse.json({ error: "No media file uploaded" }, { status: 400 });
+    return NextResponse.json(
+      { error: "No media file uploaded" },
+      { status: 400 },
+    );
   }
 
-  let parsedOptions: FFmpegOptions = { selectedFormatId: "mp4", resolution: "original" };
+  // ── Plan-based file size enforcement (before loading into memory) ─────────
+  // Note: req is typed as Request here but middleware already set x-user-plan
+  const guard = guardFileSize(req as any, file.size);
+  if (!guard.allowed) return fileSizeErrorResponse(guard);
+
+  let parsedOptions: FFmpegOptions = {
+    selectedFormatId: "mp4",
+    resolution: "original",
+  };
   if (optionsJson) {
     try {
       const raw = JSON.parse(optionsJson);
       const result = mediaConverterSchema.safeParse(raw);
       if (result.success) parsedOptions = result.data as FFmpegOptions;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   const arrayBuffer = await file.arrayBuffer();
   const inputBuffer = Buffer.from(arrayBuffer);
 
   const targetFormat = MEDIA_FORMAT_OPTIONS.find(
-    (f) => f.id.toLowerCase() === parsedOptions.selectedFormatId.toLowerCase()
+    (f) => f.id.toLowerCase() === parsedOptions.selectedFormatId.toLowerCase(),
   );
   const mimeType = targetFormat?.mimeType ?? "application/octet-stream";
-  const extension = targetFormat?.extension ?? `.${parsedOptions.selectedFormatId}`;
-  const baseName = file.name.substring(0, file.name.lastIndexOf(".")) || file.name;
+  const extension =
+    targetFormat?.extension ?? `.${parsedOptions.selectedFormatId}`;
+  const baseName =
+    file.name.substring(0, file.name.lastIndexOf(".")) || file.name;
   const downloadFileName = `${baseName}_converted${extension}`;
 
   const stream = new ReadableStream({
@@ -84,11 +121,18 @@ export async function POST(req: Request) {
       try {
         // ── GIF duration guard ────────────────────────────────────────────
         const isGif = parsedOptions.selectedFormatId.toLowerCase() === "gif";
-        const isVideo = file.type.startsWith("video/") ||
+        const isVideo =
+          file.type.startsWith("video/") ||
           /\.(mp4|webm|mov|avi|mkv|m4v|wmv|flv)$/i.test(file.name);
 
         if (isGif && isVideo) {
-          sendEvent(controller, { type: "progress", percent: 5, fps: "—", speed: "—", stage: "Checking duration…" });
+          sendEvent(controller, {
+            type: "progress",
+            percent: 5,
+            fps: "—",
+            speed: "—",
+            stage: "Checking duration…",
+          });
           const dur = await probeDurationSeconds(inputBuffer);
           if (dur !== null && dur > GIF_MAX_DURATION_S) {
             sendEvent(controller, {
@@ -100,7 +144,13 @@ export async function POST(req: Request) {
           }
         }
 
-        sendEvent(controller, { type: "progress", percent: 1, fps: "—", speed: "—", stage: "Starting FFmpeg…" });
+        sendEvent(controller, {
+          type: "progress",
+          percent: 1,
+          fps: "—",
+          speed: "—",
+          stage: "Starting FFmpeg…",
+        });
 
         const outputBuffer = await convertMediaWithProgress(
           inputBuffer,
@@ -113,7 +163,7 @@ export async function POST(req: Request) {
               speed,
               stage: percent < 100 ? "Encoding…" : "Finalizing…",
             });
-          }
+          },
         );
 
         // Send the converted file as base64 in the final SSE event
@@ -127,7 +177,10 @@ export async function POST(req: Request) {
         });
         controller.close();
       } catch (err: any) {
-        sendEvent(controller, { type: "error", message: err?.message ?? "Conversion failed" });
+        sendEvent(controller, {
+          type: "error",
+          message: err?.message ?? "Conversion failed",
+        });
         controller.close();
       }
     },
@@ -137,7 +190,7 @@ export async function POST(req: Request) {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
-      "Connection": "keep-alive",
+      Connection: "keep-alive",
     },
   });
 }

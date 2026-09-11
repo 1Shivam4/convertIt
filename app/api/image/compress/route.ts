@@ -1,5 +1,10 @@
 import { NextRequest } from "next/server";
 import { processImageTransform } from "@/app/lib/image/sharpUtils";
+import { recordUserJob } from "@/app/lib/auth-helpers";
+import {
+  guardFileSizeBatch,
+  fileSizeErrorResponse,
+} from "@/app/lib/file-guard";
 import JSZip from "jszip";
 
 export async function POST(req: NextRequest) {
@@ -13,11 +18,17 @@ export async function POST(req: NextRequest) {
       return new Response("No image files uploaded.", { status: 400 });
     }
 
+    // ── Plan-based file size enforcement ─────────────────────────────────────
+    const guard = guardFileSizeBatch(req, files);
+    if (!guard.allowed) return fileSizeErrorResponse(guard);
+
     if (files.length === 1) {
       const file = files[0];
       const buffer = Buffer.from(await file.arrayBuffer());
       const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const targetFormat = ["png", "webp", "avif", "gif"].includes(ext) ? ext : "jpg";
+      const targetFormat = ["png", "webp", "avif", "gif"].includes(ext)
+        ? ext
+        : "jpg";
 
       const result = await processImageTransform(buffer, {
         targetFormat,
@@ -25,7 +36,16 @@ export async function POST(req: NextRequest) {
         stripExif: true,
       });
 
-      const originalName = file.name.substring(0, file.name.lastIndexOf(".")) || "compressed";
+      const originalName =
+        file.name.substring(0, file.name.lastIndexOf(".")) || "compressed";
+
+      recordUserJob(req, {
+        sourceFormat: ext,
+        targetFormat,
+        engine: "sharp",
+        status: "COMPLETED",
+        fileSize: result.buffer.byteLength,
+      });
 
       return new Response(new Uint8Array(result.buffer), {
         status: 200,
@@ -44,7 +64,9 @@ export async function POST(req: NextRequest) {
       const file = files[i];
       const buffer = Buffer.from(await file.arrayBuffer());
       const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const targetFormat = ["png", "webp", "avif", "gif"].includes(ext) ? ext : "jpg";
+      const targetFormat = ["png", "webp", "avif", "gif"].includes(ext)
+        ? ext
+        : "jpg";
 
       const result = await processImageTransform(buffer, {
         targetFormat,
@@ -52,7 +74,8 @@ export async function POST(req: NextRequest) {
         stripExif: true,
       });
 
-      const originalName = file.name.substring(0, file.name.lastIndexOf(".")) || `image_${i + 1}`;
+      const originalName =
+        file.name.substring(0, file.name.lastIndexOf(".")) || `image_${i + 1}`;
       zip.file(`${originalName}_compressed${result.extension}`, result.buffer);
     }
 

@@ -11,6 +11,8 @@ import {
   Settings,
   LogOut,
   User as UserIcon,
+  CreditCard,
+  Zap,
 } from "lucide-react";
 import { useSession, signOut } from "@/app/lib/auth-client";
 
@@ -18,6 +20,7 @@ const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/history", label: "Job History", icon: History },
   { href: "/dashboard/api-keys", label: "API Keys", icon: Key },
+  { href: "/dashboard/billing", label: "Billing & Plans", icon: CreditCard },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
@@ -104,6 +107,23 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 {user?.name || "User"}
               </p>
               <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+              {/* Plan badge */}
+              {(user as any)?.plan && (
+                <span
+                  className={`inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                    (user as any).plan === "PRO"
+                      ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                      : (user as any).plan === "STANDARD"
+                        ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                        : "bg-white/10 text-slate-400 border border-white/10"
+                  }`}
+                >
+                  {(user as any).plan === "PRO" && (
+                    <Zap className="w-2.5 h-2.5" />
+                  )}
+                  {(user as any).plan ?? "FREE"}
+                </span>
+              )}
             </div>
           </div>
 

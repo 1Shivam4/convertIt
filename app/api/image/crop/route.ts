@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import sharp from "sharp";
+import { recordUserJob } from "@/app/lib/auth-helpers";
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,7 +9,8 @@ export async function POST(req: NextRequest) {
     const cropRaw = formData.get("crop") as string | null;
 
     if (!file) return new Response("No image file uploaded.", { status: 400 });
-    if (!cropRaw) return new Response("No crop region provided.", { status: 400 });
+    if (!cropRaw)
+      return new Response("No crop region provided.", { status: 400 });
 
     const { left, top, width, height } = JSON.parse(cropRaw) as {
       left: number;
@@ -34,12 +36,25 @@ export async function POST(req: NextRequest) {
     const safeHeight = Math.min(Math.round(height), imgH - safeTop);
 
     const outputBuffer = await sharp(inputBuffer)
-      .extract({ left: safeLeft, top: safeTop, width: safeWidth, height: safeHeight })
+      .extract({
+        left: safeLeft,
+        top: safeTop,
+        width: safeWidth,
+        height: safeHeight,
+      })
       .toBuffer();
 
     const originalName =
       file.name.substring(0, file.name.lastIndexOf(".")) || "cropped";
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+
+    recordUserJob(req, {
+      sourceFormat: ext,
+      targetFormat: ext,
+      engine: "sharp",
+      status: "COMPLETED",
+      fileSize: outputBuffer.byteLength,
+    });
 
     return new Response(new Uint8Array(outputBuffer), {
       status: 200,

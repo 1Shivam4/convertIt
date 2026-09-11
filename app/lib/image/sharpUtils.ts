@@ -21,11 +21,64 @@ export interface ConvertedImageResult {
 }
 
 /**
+ * Encodes raw RGB/RGBA pixel data into a standard 24-bit uncompressed BMP Buffer.
+ */
+function encodeBmpBuffer(
+  rawData: Buffer,
+  width: number,
+  height: number,
+  channels: number,
+): Buffer {
+  const bytesPerPixel = 3; // 24-bit BGR
+  const rowSize = Math.floor((24 * width + 31) / 32) * 4; // 4-byte aligned row
+  const pixelArraySize = rowSize * height;
+  const fileHeaderSize = 14;
+  const dibHeaderSize = 40;
+  const fileSize = fileHeaderSize + dibHeaderSize + pixelArraySize;
+
+  const buf = Buffer.alloc(fileSize);
+
+  // Bitmap File Header (14 bytes)
+  buf.write("BM", 0, 2, "ascii");
+  buf.writeUInt32LE(fileSize, 2);
+  buf.writeUInt32LE(0, 6);
+  buf.writeUInt32LE(54, 10);
+
+  // DIB Header (BITMAPINFOHEADER - 40 bytes)
+  buf.writeUInt32LE(40, 14);
+  buf.writeInt32LE(width, 18);
+  buf.writeInt32LE(height, 22); // Positive = bottom-to-top
+  buf.writeUInt16LE(1, 26);
+  buf.writeUInt16LE(24, 28);
+  buf.writeUInt32LE(0, 30);
+  buf.writeUInt32LE(pixelArraySize, 34);
+  buf.writeInt32LE(2835, 38);
+  buf.writeInt32LE(2835, 42);
+
+  // Copy pixels (BMP is stored bottom-to-top in BGR channel order)
+  for (let y = 0; y < height; y++) {
+    const srcRow = (height - 1 - y) * width * channels;
+    const destRow = fileHeaderSize + dibHeaderSize + y * rowSize;
+
+    for (let x = 0; x < width; x++) {
+      const srcPx = srcRow + x * channels;
+      const destPx = destRow + x * bytesPerPixel;
+
+      buf[destPx] = rawData[srcPx + 2]; // Blue
+      buf[destPx + 1] = rawData[srcPx + 1]; // Green
+      buf[destPx + 2] = rawData[srcPx]; // Red
+    }
+  }
+
+  return buf;
+}
+
+/**
  * Transforms an image buffer using Sharp based on provided options.
  */
 export async function processImageTransform(
   inputBuffer: Buffer,
-  options: ImageTransformOptions
+  options: ImageTransformOptions,
 ): Promise<ConvertedImageResult> {
   let pipeline = sharp(inputBuffer);
 
@@ -68,8 +121,12 @@ export async function processImageTransform(
   const quality = Math.min(Math.max(options.quality || 85, 1), 100);
   const targetFormat = (options.targetFormat || "jpg").toLowerCase();
 
-  // Background flattening for formats without alpha channel (e.g., JPEG, BMP)
-  if (targetFormat === "jpg" || targetFormat === "jpeg" || targetFormat === "bmp") {
+  // Background flattening for formats without alpha channel
+  if (
+    targetFormat === "jpg" ||
+    targetFormat === "jpeg" ||
+    targetFormat === "bmp"
+  ) {
     const bgColor = options.backgroundColor || "#ffffff";
     pipeline = pipeline.flatten({ background: bgColor });
   }
@@ -81,7 +138,6 @@ export async function processImageTransform(
     case "png":
       contentType = "image/png";
       extension = ".png";
-      // compressionLevel 6 = balanced file size vs speed (9 = slowest/smallest)
       pipeline = pipeline.png({ compressionLevel: 6 });
       break;
 
@@ -109,12 +165,20 @@ export async function processImageTransform(
       pipeline = pipeline.tiff({ quality });
       break;
 
-    case "bmp":
+    case "bmp": {
       contentType = "image/bmp";
       extension = ".bmp";
-      // Sharp supports BMP output natively via toFormat
-      pipeline = pipeline.toFormat("bmp" as any);
-      break;
+      const { data, info } = await pipeline
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      const buffer = encodeBmpBuffer(
+        data,
+        info.width,
+        info.height,
+        info.channels,
+      );
+      return { buffer, contentType, extension };
+    }
 
     case "jpg":
     case "jpeg":
@@ -135,12 +199,11 @@ export async function processImageTransform(
 }
 
 /**
- * Generates an ICO multi-resolution favicon buffer from an image buffer.
+ * Generates a 32x32 favicon buffer from an input image.
  */
 export async function generateIcoFavicon(
-  inputBuffer: Buffer
+  inputBuffer: Buffer,
 ): Promise<ConvertedImageResult> {
-  // Generate 32x32 PNG icon as main fallback
   const buffer = await sharp(inputBuffer)
     .resize(32, 32, { fit: "contain" })
     .png()

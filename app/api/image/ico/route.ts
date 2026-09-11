@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { generateIcoFavicon } from "@/app/lib/image/sharpUtils";
+import { recordUserJob } from "@/app/lib/auth-helpers";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,7 +16,17 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const result = await generateIcoFavicon(buffer);
 
-    const originalName = file.name.substring(0, file.name.lastIndexOf(".")) || "favicon";
+    const originalName =
+      file.name.substring(0, file.name.lastIndexOf(".")) || "favicon";
+    const srcExt = file.name.split(".").pop()?.toLowerCase() || "img";
+
+    recordUserJob(req, {
+      sourceFormat: srcExt,
+      targetFormat: "ico",
+      engine: "sharp",
+      status: "COMPLETED",
+      fileSize: result.buffer.byteLength,
+    });
 
     return new Response(new Uint8Array(result.buffer), {
       status: 200,

@@ -321,8 +321,15 @@ export default function PDFToConvertor() {
           const errText = await response
             .text()
             .catch(() => "Conversion failed");
+          let message = errText;
+          try {
+            const parsed = JSON.parse(errText);
+            if (parsed.error) message = parsed.error;
+          } catch {
+            /* not json */
+          }
           throw new Error(
-            errText || `Server responded with status ${response.status}`,
+            message || `Server responded with status ${response.status}`,
           );
         }
 

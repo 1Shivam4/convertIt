@@ -21,6 +21,11 @@ model User {
   createdAt     DateTime
   updatedAt     DateTime
 
+  // Subscription plan — defaults to FREE for all new sign-ups
+  plan          Plan      @default(FREE)
+  // Reserved for future Stripe integration (subscription expiry)
+  planExpiresAt DateTime?
+
   sessions      Session[]
   accounts      Account[]
 
@@ -105,11 +110,13 @@ model Conversion {
 }
 
 model ApiKey {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  key       String   @unique
-  createdAt DateTime @default(now())
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  key         String    @unique
+  label       String?
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
 }
 
 enum JobStatus {
@@ -117,4 +124,11 @@ enum JobStatus {
   PROCESSING
   COMPLETED
   FAILED
+}
+
+enum Plan {
+  GUEST
+  FREE
+  STANDARD
+  PRO
 }
