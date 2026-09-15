@@ -1,11 +1,13 @@
 /**
  * app/lib/plans.ts
  * ─────────────────────────────────────────────────────────────────────────────
- * Single source of truth for all subscription tier limits.
- * Every enforcement layer (middleware, API routes, UI) reads from here.
+ * Single source of truth for all subscription tier limits and engine quotas.
+ * Every enforcement layer (middleware, API routes, quota guards, UI) reads from here.
  */
 
 export type Plan = "GUEST" | "FREE" | "STANDARD" | "PRO";
+
+export type EngineType = "pdf" | "image" | "media";
 
 export type PlanConfig = {
   /** Maximum allowed upload file size in bytes */
@@ -24,21 +26,38 @@ export type PlanConfig = {
   label: string;
   /** Badge color class for DaisyUI */
   badgeColor: string;
+  /** Price in INR */
+  priceInr: number;
+  /** Human-readable price tag */
+  priceDisplay: string;
+  /** Engine-specific daily conversion quotas */
+  quotas: {
+    pdfDailyLimit: number | "unlimited";
+    imageDailyLimit: number | "unlimited";
+    mediaDailyLimit: number | "unlimited";
+  };
 };
 
 export const PLAN_LIMITS = {
   GUEST: {
-    maxFileSizeBytes: 10 * 1024 * 1024,   // 10 MB
+    maxFileSizeBytes: 10 * 1024 * 1024, // 10 MB
     rateLimit: 10,
-    storageTTLHours: 0,                    // stream-only, no R2 persistence
+    storageTTLHours: 0, // stream-only, no R2 persistence
     queuePriority: 10,
     canUseApiKeys: false,
     concurrentUploads: 1,
     label: "Guest",
     badgeColor: "badge-ghost",
+    priceInr: 0,
+    priceDisplay: "Free",
+    quotas: {
+      pdfDailyLimit: "unlimited",
+      imageDailyLimit: 10,
+      mediaDailyLimit: 3,
+    },
   },
   FREE: {
-    maxFileSizeBytes: 40 * 1024 * 1024,   // 40 MB
+    maxFileSizeBytes: 40 * 1024 * 1024, // 40 MB
     rateLimit: 30,
     storageTTLHours: 24,
     queuePriority: 5,
@@ -46,26 +65,47 @@ export const PLAN_LIMITS = {
     concurrentUploads: 2,
     label: "Free",
     badgeColor: "badge-neutral",
+    priceInr: 0,
+    priceDisplay: "Free",
+    quotas: {
+      pdfDailyLimit: "unlimited",
+      imageDailyLimit: 25,
+      mediaDailyLimit: 5,
+    },
   },
   STANDARD: {
-    maxFileSizeBytes: 200 * 1024 * 1024,  // 200 MB
+    maxFileSizeBytes: 200 * 1024 * 1024, // 200 MB
     rateLimit: 100,
-    storageTTLHours: 168,                  // 7 days
+    storageTTLHours: 168, // 7 days
     queuePriority: 2,
     canUseApiKeys: true,
     concurrentUploads: 5,
     label: "Standard",
     badgeColor: "badge-info",
+    priceInr: 499,
+    priceDisplay: "₹499/mo",
+    quotas: {
+      pdfDailyLimit: "unlimited",
+      imageDailyLimit: 500,
+      mediaDailyLimit: 100,
+    },
   },
   PRO: {
-    maxFileSizeBytes: 500 * 1024 * 1024,  // 500 MB
+    maxFileSizeBytes: 500 * 1024 * 1024, // 500 MB
     rateLimit: 300,
-    storageTTLHours: 720,                  // 30 days
+    storageTTLHours: 720, // 30 days
     queuePriority: 1,
     canUseApiKeys: true,
     concurrentUploads: 10,
     label: "Pro",
     badgeColor: "badge-warning",
+    priceInr: 1499,
+    priceDisplay: "₹1,499/mo",
+    quotas: {
+      pdfDailyLimit: "unlimited",
+      imageDailyLimit: "unlimited",
+      mediaDailyLimit: "unlimited",
+    },
   },
 } as const satisfies Record<Plan, PlanConfig>;
 
@@ -88,10 +128,10 @@ export function getUpgradeMessage(plan: Plan, fileSize: number): string {
   const limitMB = formatFileSize(limit.maxFileSizeBytes);
 
   const upgrades: Record<Plan, string> = {
-    GUEST:    "Sign up for free to upload files up to 40 MB",
-    FREE:     "Upgrade to Standard to upload files up to 200 MB",
+    GUEST: "Sign up for free to upload files up to 40 MB",
+    FREE: "Upgrade to Standard to upload files up to 200 MB",
     STANDARD: "Upgrade to Pro to upload files up to 500 MB",
-    PRO:      "File exceeds the maximum allowed size",
+    PRO: "File exceeds the maximum allowed size",
   };
 
   return `Your file (${fileMB}) exceeds your ${limit.label} plan limit of ${limitMB}. ${upgrades[plan]}.`;

@@ -2,17 +2,14 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { dash } from "@better-auth/infra";
 import { prisma } from "@/app/lib/prisma";
-import { sendEmail } from "@/app/lib/email";
+import { enqueueEmailJob } from "@/app/lib/queue";
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
 
   secret: process.env.BETTER_AUTH_SECRET!,
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
-  trustedOrigins: [
-    "https://threefold-expand-unclasp.ngrok-free.dev",
-    "http://localhost:3000",
-  ],
+  trustedOrigins: ["http://localhost:3000"],
   advanced: {
     useSecureCookies: process.env.NODE_ENV === "production",
   },
@@ -22,9 +19,10 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
-      await sendEmail({
+      await enqueueEmailJob({
         to: user.email,
         subject: "Reset your ConvertIt password",
+        type: "password-reset",
         html: `
           <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
             <h2>Reset your password</h2>
@@ -46,9 +44,10 @@ export const auth = betterAuth({
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
-      await sendEmail({
+      await enqueueEmailJob({
         to: user.email,
         subject: "Verify your ConvertIt email",
+        type: "verification",
         html: `
           <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
             <h2>Welcome to ConvertIt!</h2>

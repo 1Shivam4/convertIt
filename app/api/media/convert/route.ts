@@ -6,6 +6,8 @@ import {
 import { mediaConverterSchema } from "@/app/lib/schemas/mediaConverterSchema";
 import { MEDIA_FORMAT_OPTIONS } from "@/app/utils/vars";
 import { guardFileSize, fileSizeErrorResponse } from "@/app/lib/file-guard";
+import { consumeEngineQuota, getClientIdentifier } from "@/app/lib/engine-quota";
+import type { Plan } from "@/app/lib/plans";
 import { existsSync } from "fs";
 import { join } from "path";
 import { execFile } from "child_process";
@@ -85,9 +87,28 @@ export async function POST(req: Request) {
   }
 
   // ── Plan-based file size enforcement (before loading into memory) ─────────
-  // Note: req is typed as Request here but middleware already set x-user-plan
   const guard = guardFileSize(req as any, file.size);
   if (!guard.allowed) return fileSizeErrorResponse(guard);
+
+  // ── Plan-based daily media conversion quota check ────────────────────────
+  const plan = (req.headers.get("x-user-plan") as Plan) || "GUEST";
+  const clientId = getClientIdentifier(req as any);
+  const quota = await consumeEngineQuota(clientId, "media", plan, 1);
+
+  if (!quota.allowed) {
+    return NextResponse.json(
+      {
+        error: quota.message || "Daily audio/video conversion quota exceeded.",
+        quota,
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(quota.resetSeconds),
+        },
+      }
+    );
+  }
 
   let parsedOptions: FFmpegOptions = {
     selectedFormatId: "mp4",

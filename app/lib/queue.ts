@@ -1,7 +1,9 @@
 import { Queue } from "bullmq";
 import { redisConnection } from "./redis";
 import { prisma } from "./prisma";
+import { sendEmail } from "./email";
 
+// ── 1. Conversion Queue ──────────────────────────────────────────────────────
 export const conversionQueue = new Queue("conversion", {
   connection: redisConnection,
   defaultJobOptions: {
@@ -11,6 +13,43 @@ export const conversionQueue = new Queue("conversion", {
     removeOnFail: { age: 86400 }, // keep failed jobs 24hr for debugging
   },
 });
+
+// ── 2. Email Queue ───────────────────────────────────────────────────────────
+export const emailQueue = new Queue("email", {
+  connection: redisConnection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 3000 },
+    removeOnComplete: { age: 3600 },
+    removeOnFail: { age: 86400 },
+  },
+});
+
+export type EnqueueEmailParams = {
+  to: string;
+  subject: string;
+  html: string;
+  type?: "verification" | "password-reset" | "notification" | "billing";
+};
+
+/**
+ * Enqueues an email into BullMQ for background processing with automatic retries.
+ * Falls back gracefully to direct SMTP send if Redis is offline during local dev.
+ */
+export async function enqueueEmailJob(params: EnqueueEmailParams) {
+  try {
+    if (redisConnection.status === "ready" || redisConnection.status === "connect") {
+      const job = await emailQueue.add("send-email", params);
+      return { success: true, jobId: job.id, mode: "queue" as const };
+    }
+  } catch (err) {
+    console.warn("[EmailQueue] Queue unavailable, falling back to direct send:", err);
+  }
+
+  // Graceful fallback to direct SMTP send
+  await sendEmail(params);
+  return { success: true, mode: "direct" as const };
+}
 
 export type EnqueueJobParams = {
   userId: string;

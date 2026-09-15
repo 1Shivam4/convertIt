@@ -1,14 +1,15 @@
 import { Worker, Job } from "bullmq";
 import { redisConnection } from "../lib/redis";
 import { prisma } from "../lib/prisma";
+import { sendEmail } from "../lib/email";
 import {
   getObjectBufferFromR2,
   uploadBufferToR2,
-  getPresignedDownloadUrl,
 } from "../lib/s3";
 import { processImageTransform } from "../lib/image/sharpUtils";
+import type { EnqueueEmailParams } from "../lib/queue";
 
-type JobPayload = {
+type ConversionJobPayload = {
   jobId: string;
   userId: string;
   sourceFormat: string;
@@ -18,14 +19,45 @@ type JobPayload = {
   options: Record<string, any>;
 };
 
-console.log("🚀 Starting ConvertIt BullMQ Worker Consumer...");
+console.log("🚀 Starting ConvertIt BullMQ Worker Process (Email & Conversion)...");
 
-const worker = new Worker<JobPayload>(
+// ─────────────────────────────────────────────────────────────────────────────
+// 1. Email Worker Consumer (High Concurrency: 10)
+// ─────────────────────────────────────────────────────────────────────────────
+export const emailWorker = new Worker<EnqueueEmailParams>(
+  "email",
+  async (job: Job<EnqueueEmailParams>) => {
+    const { to, subject, html, type } = job.data;
+    console.log(`[Email Worker] Processing ${type || "general"} email to: ${to}...`);
+
+    await sendEmail({ to, subject, html });
+
+    console.log(`✅ [Email Worker] Email delivered to: ${to} (Subject: "${subject}")`);
+    return { delivered: true, to };
+  },
+  {
+    connection: redisConnection,
+    concurrency: 10,
+  }
+);
+
+emailWorker.on("completed", (job) => {
+  console.log(`✅ [BullMQ:Email] Job ${job.id} completed.`);
+});
+
+emailWorker.on("failed", (job, err) => {
+  console.error(`❌ [BullMQ:Email] Job ${job?.id} failed:`, err.message);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. Conversion Worker Consumer (Concurrency: 5)
+// ─────────────────────────────────────────────────────────────────────────────
+export const conversionWorker = new Worker<ConversionJobPayload>(
   "conversion",
-  async (job: Job<JobPayload>) => {
+  async (job: Job<ConversionJobPayload>) => {
     const { jobId, targetFormat, engine, inputS3Key, options } = job.data;
 
-    console.log(`[Worker] Processing job ${jobId} (engine: ${engine})...`);
+    console.log(`[Conversion Worker] Processing job ${jobId} (engine: ${engine})...`);
 
     // 1. Update Job status to PROCESSING in Prisma
     await prisma.job.update({
@@ -83,10 +115,10 @@ const worker = new Worker<JobPayload>(
         },
       });
 
-      console.log(`[Worker] Job ${jobId} COMPLETED successfully.`);
+      console.log(`[Conversion Worker] Job ${jobId} COMPLETED successfully.`);
       return { outputKey };
     } catch (err: any) {
-      console.error(`[Worker] Job ${jobId} FAILED:`, err.message);
+      console.error(`[Conversion Worker] Job ${jobId} FAILED:`, err.message);
 
       await prisma.job.update({
         where: { id: jobId },
@@ -110,13 +142,13 @@ const worker = new Worker<JobPayload>(
   {
     connection: redisConnection,
     concurrency: 5,
-  },
+  }
 );
 
-worker.on("completed", (job) => {
-  console.log(`✅ [BullMQ] Job ${job.id} completed.`);
+conversionWorker.on("completed", (job) => {
+  console.log(`✅ [BullMQ:Conversion] Job ${job.id} completed.`);
 });
 
-worker.on("failed", (job, err) => {
-  console.error(`❌ [BullMQ] Job ${job?.id} failed:`, err.message);
+conversionWorker.on("failed", (job, err) => {
+  console.error(`❌ [BullMQ:Conversion] Job ${job?.id} failed:`, err.message);
 });

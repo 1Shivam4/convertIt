@@ -1,25 +1,24 @@
 /**
- * middleware.ts  (Next.js 16 — must be this filename, export named `middleware`)
+ * proxy.ts (Next.js 16 standard proxy convention replacing deprecated middleware.ts)
  * ─────────────────────────────────────────────────────────────────────────────
  * Route protection + rate limiting + plan header injection.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionCookie } from "better-auth/cookies";
 import { checkRateLimit } from "@/app/lib/rate-limit";
-import { resolvePlanFromRequest } from "@/app/lib/resolve-plan";
+import { resolvePlanFromRequest, getSessionTokenFromRequest } from "@/app/lib/resolve-plan";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // ── 1. Dashboard protection — redirect if no session ─────────────────────
-  const session = getSessionCookie(request);
-  if (pathname.startsWith("/dashboard") && !session) {
+  const sessionToken = getSessionTokenFromRequest(request);
+  if (pathname.startsWith("/dashboard") && !sessionToken) {
     return NextResponse.redirect(new URL("/sign-in", request.url));
   }
 
   // ── 2. Redirect authenticated users away from auth pages ─────────────────
-  if ((pathname === "/sign-in" || pathname === "/sign-up") && session) {
+  if ((pathname === "/sign-in" || pathname === "/sign-up") && sessionToken) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
@@ -67,6 +66,9 @@ export async function middleware(request: NextRequest) {
 
   return NextResponse.next();
 }
+
+// Support both export proxy and default export for Next.js 16
+export default proxy;
 
 export const config = {
   matcher: [

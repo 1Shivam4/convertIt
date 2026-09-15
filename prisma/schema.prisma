@@ -22,16 +22,17 @@ model User {
   updatedAt     DateTime
 
   // Subscription plan — defaults to FREE for all new sign-ups
-  plan          Plan      @default(FREE)
-  // Reserved for future Stripe integration (subscription expiry)
-  planExpiresAt DateTime?
+  plan               Plan          @default(FREE)
+  planExpiresAt      DateTime?
+  razorpayCustomerId String?
 
-  sessions      Session[]
-  accounts      Account[]
+  sessions           Session[]
+  accounts           Account[]
 
   // ConvertIt relations
-  jobs          Job[]
-  apiKeys       ApiKey[]
+  jobs               Job[]
+  apiKeys            ApiKey[]
+  subscription       Subscription?
 }
 
 model Session {
@@ -119,6 +120,31 @@ model ApiKey {
   createdAt   DateTime  @default(now())
 }
 
+model Subscription {
+  id                     String             @id @default(cuid())
+  userId                 String             @unique
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  razorpaySubscriptionId String             @unique
+  razorpayPlanId         String
+  razorpayCustomerId     String?
+  status                 SubscriptionStatus @default(ACTIVE)
+  plan                   Plan
+  currentPeriodStart     DateTime           @default(now())
+  currentPeriodEnd       DateTime
+  cancelAtPeriodEnd      Boolean            @default(false)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  AUTHENTICATED
+  PENDING
+  HALTED
+  CANCELLED
+  COMPLETED
+}
+
 enum JobStatus {
   QUEUED
   PROCESSING
@@ -131,4 +157,4 @@ enum Plan {
   FREE
   STANDARD
   PRO
-}
+}

@@ -5,6 +5,8 @@ import {
   guardFileSizeBatch,
   fileSizeErrorResponse,
 } from "@/app/lib/file-guard";
+import { consumeEngineQuota, getClientIdentifier } from "@/app/lib/engine-quota";
+import type { Plan } from "@/app/lib/plans";
 import JSZip from "jszip";
 
 export async function POST(req: NextRequest) {
@@ -21,6 +23,27 @@ export async function POST(req: NextRequest) {
     // ── Plan-based file size enforcement ─────────────────────────────────────
     const guard = guardFileSizeBatch(req, files);
     if (!guard.allowed) return fileSizeErrorResponse(guard);
+
+    // ── Plan-based daily image quota check ───────────────────────────────────
+    const plan = (req.headers.get("x-user-plan") as Plan) || "GUEST";
+    const clientId = getClientIdentifier(req);
+    const quota = await consumeEngineQuota(clientId, "image", plan, files.length);
+
+    if (!quota.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: quota.message || "Daily image compression quota exceeded.",
+          quota,
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "Retry-After": String(quota.resetSeconds),
+          },
+        }
+      );
+    }
 
     if (files.length === 1) {
       const file = files[0];
