@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   processImageTransform,
   ImageTransformOptions,
@@ -9,6 +9,9 @@ import {
   fileSizeErrorResponse,
 } from "@/app/lib/file-guard";
 import { consumeEngineQuota, getClientIdentifier } from "@/app/lib/engine-quota";
+import { shouldOffloadToWorker } from "@/app/lib/adaptiveRouter";
+import { enqueueConversionJob } from "@/app/lib/queue";
+import { resolveUserFromRequest } from "@/app/lib/resolve-plan";
 import type { Plan } from "@/app/lib/plans";
 import JSZip from "jszip";
 
@@ -56,7 +59,38 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // If single file upload, return the converted file directly
+    // Check total payload size or single file size for adaptive offloading
+    const totalBytes = files.reduce((acc, f) => acc + f.size, 0);
+    const isBatchHeavy = files.length > 5;
+
+    if (shouldOffloadToWorker(totalBytes, parsedOptions.targetFormat, { isBatch: isBatchHeavy })) {
+      const user = await resolveUserFromRequest(req);
+      const firstFile = files[0];
+      const buffer = Buffer.from(await firstFile.arrayBuffer());
+
+      const { jobId } = await enqueueConversionJob({
+        userId: user?.id || null,
+        sourceFormat: firstFile.name.split(".").pop() || "img",
+        targetFormat: parsedOptions.targetFormat,
+        engine: "sharp",
+        fileName: firstFile.name,
+        fileSize: totalBytes,
+        fileBuffer: buffer,
+        options: parsedOptions,
+      });
+
+      return NextResponse.json(
+        {
+          mode: "async",
+          jobId,
+          status: "QUEUED",
+          message: "High-resolution image conversion queued for background processing",
+        },
+        { status: 202 }
+      );
+    }
+
+    // If single file upload, return the converted file directly (Fast-Path)
     if (files.length === 1) {
       const file = files[0];
       const buffer = Buffer.from(await file.arrayBuffer());

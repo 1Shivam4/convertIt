@@ -52,11 +52,14 @@ export async function enqueueEmailJob(params: EnqueueEmailParams) {
 }
 
 export type EnqueueJobParams = {
-  userId: string;
+  userId?: string | null;
   sourceFormat: string;
   targetFormat: string;
   engine: string;
-  inputS3Key: string;
+  inputS3Key?: string;
+  fileBuffer?: Buffer;
+  fileName?: string;
+  fileSize?: number;
   options?: Record<string, any>;
 };
 
@@ -64,10 +67,30 @@ export type EnqueueJobParams = {
  * Enqueues a conversion job into BullMQ and creates a QUEUED Job record in PostgreSQL.
  */
 export async function enqueueConversionJob(params: EnqueueJobParams) {
+  let s3Key = params.inputS3Key;
+
+  // If buffer is provided directly, upload to R2 / storage
+  if (!s3Key && params.fileBuffer) {
+    const { uploadBufferToR2 } = await import("./s3");
+    const safeName = (params.fileName || "input_file").replace(/[^a-zA-Z0-9_.-]/g, "_");
+    s3Key = `uploads/${Date.now()}_${safeName}`;
+    try {
+      await uploadBufferToR2(
+        params.fileBuffer,
+        s3Key,
+        `application/${params.sourceFormat}`
+      );
+    } catch (err) {
+      console.warn("[Queue] R2 upload skipped or failed, storing local ref:", err);
+    }
+  }
+
+  const finalKey = s3Key || `temp/${Date.now()}_${params.sourceFormat}`;
+
   // 1. Create Job record in PostgreSQL
   const dbJob = await prisma.job.create({
     data: {
-      userId: params.userId,
+      userId: params.userId || null,
       sourceFormat: params.sourceFormat,
       targetFormat: params.targetFormat,
       status: "QUEUED",
@@ -79,8 +102,8 @@ export async function enqueueConversionJob(params: EnqueueJobParams) {
       },
       files: {
         create: {
-          path: params.inputS3Key,
-          size: 0,
+          path: finalKey,
+          size: params.fileSize || params.fileBuffer?.byteLength || 0,
           mimeType: `application/${params.sourceFormat}`,
         },
       },
@@ -90,11 +113,12 @@ export async function enqueueConversionJob(params: EnqueueJobParams) {
   // 2. Add job to BullMQ queue
   const queueJob = await conversionQueue.add("process-conversion", {
     jobId: dbJob.id,
-    userId: params.userId,
+    userId: params.userId || null,
     sourceFormat: params.sourceFormat,
     targetFormat: params.targetFormat,
     engine: params.engine,
-    inputS3Key: params.inputS3Key,
+    inputS3Key: finalKey,
+    fileName: params.fileName,
     options: params.options || {},
   });
 

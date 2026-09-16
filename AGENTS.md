@@ -14,7 +14,7 @@ Welcome, AI Agent! This guide serves as the definitive reference for understandi
 
 **ConvertIt** is a full-stack, multi-engine document and media conversion platform built for high-throughput synchronous and asynchronous file transformations.
 
-* **Frontend**: Next.js 16 (App Router), React 19, TypeScript 5, Tailwind CSS v4, DaisyUI, Base UI, Lucide Icons
+* **Frontend**: Next.js 15 (App Router), React 19, TypeScript 5, Tailwind CSS v4, DaisyUI, Base UI, Lucide Icons
 * **Client State**: Zustand 5, TanStack React Query 5
 * **Database & ORM**: PostgreSQL (Neon Serverless), Prisma ORM 7 (`@prisma/adapter-neon`)
 * **Queue & Background Processing**: Redis (`ioredis`), BullMQ 6, Bun 1.x runtime

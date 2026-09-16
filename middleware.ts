@@ -1,5 +1,5 @@
 /**
- * proxy.ts (Next.js 16 standard proxy convention replacing deprecated middleware.ts)
+ * middleware.ts (Next.js 15 Standard Middleware)
  * ─────────────────────────────────────────────────────────────────────────────
  * Route protection + rate limiting + plan header injection.
  */
@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/app/lib/rate-limit";
 import { resolvePlanFromRequest, getSessionTokenFromRequest } from "@/app/lib/resolve-plan";
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // ── 1. Dashboard protection — redirect if no session ─────────────────────
@@ -66,9 +66,6 @@ export async function proxy(request: NextRequest) {
 
   return NextResponse.next();
 }
-
-// Support both export proxy and default export for Next.js 16
-export default proxy;
 
 export const config = {
   matcher: [

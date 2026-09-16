@@ -7,15 +7,18 @@ import {
   uploadBufferToR2,
 } from "../lib/s3";
 import { processImageTransform } from "../lib/image/sharpUtils";
+import { convertMediaWithProgress } from "../lib/media/ffmpegUtils";
+import { rotatePDFPages } from "../lib/pdf/pdfLibUtils";
 import type { EnqueueEmailParams } from "../lib/queue";
 
 type ConversionJobPayload = {
   jobId: string;
-  userId: string;
+  userId?: string | null;
   sourceFormat: string;
   targetFormat: string;
   engine: string;
   inputS3Key: string;
+  fileName?: string;
   options: Record<string, any>;
 };
 
@@ -50,14 +53,14 @@ emailWorker.on("failed", (job, err) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. Conversion Worker Consumer (Concurrency: 5)
+// 2. Conversion Worker Consumer (Multi-Engine Concurrency: 5)
 // ─────────────────────────────────────────────────────────────────────────────
 export const conversionWorker = new Worker<ConversionJobPayload>(
   "conversion",
   async (job: Job<ConversionJobPayload>) => {
-    const { jobId, targetFormat, engine, inputS3Key, options } = job.data;
+    const { jobId, sourceFormat, targetFormat, engine, inputS3Key, fileName, options } = job.data;
 
-    console.log(`[Conversion Worker] Processing job ${jobId} (engine: ${engine})...`);
+    console.log(`[Conversion Worker] Processing job ${jobId} (engine: ${engine}, target: ${targetFormat})...`);
 
     // 1. Update Job status to PROCESSING in Prisma
     await prisma.job.update({
@@ -66,14 +69,14 @@ export const conversionWorker = new Worker<ConversionJobPayload>(
     });
 
     try {
-      // 2. Fetch input file buffer from Cloudflare R2
+      // 2. Fetch input file buffer from Cloudflare R2 / Storage
       const inputBuffer = await getObjectBufferFromR2(inputS3Key);
 
       let outputBuffer: Buffer;
       let contentType = "application/octet-stream";
       let extension = `.${targetFormat}`;
 
-      // 3. Execute conversion engine
+      // 3. Execute conversion based on engine
       if (engine === "sharp") {
         const result = await processImageTransform(inputBuffer, {
           targetFormat,
@@ -82,8 +85,43 @@ export const conversionWorker = new Worker<ConversionJobPayload>(
         outputBuffer = result.buffer;
         contentType = result.contentType;
         extension = result.extension;
+      } else if (engine === "ffmpeg") {
+        outputBuffer = await convertMediaWithProgress(
+          inputBuffer,
+          {
+            selectedFormatId: targetFormat,
+            ...options,
+          },
+          (percent) => {
+            job.updateProgress(percent);
+          }
+        );
+        contentType = targetFormat === "mp3" ? "audio/mpeg" : `video/${targetFormat}`;
+      } else if (engine === "pdf-lib" && options?.rotations) {
+        const rotatedBytes = await rotatePDFPages(inputBuffer, options.rotations);
+        outputBuffer = Buffer.from(rotatedBytes);
+        contentType = "application/pdf";
+      } else if (engine === "gotenberg") {
+        const gotenbergUrl = process.env.GOTENBERG_URL || "http://localhost:3001";
+        const targetPath = options?.targetPath || "/forms/libreoffice/convert";
+        const formData = new FormData();
+        const blob = new Blob([new Uint8Array(inputBuffer)]);
+        formData.append("files", blob, fileName || `file.${sourceFormat}`);
+
+        const gotenbergRes = await fetch(new URL(targetPath, gotenbergUrl).toString(), {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!gotenbergRes.ok) {
+          throw new Error(`Gotenberg engine error: HTTP ${gotenbergRes.status}`);
+        }
+
+        const arrayBuf = await gotenbergRes.arrayBuffer();
+        outputBuffer = Buffer.from(arrayBuf);
+        contentType = gotenbergRes.headers.get("content-type") || "application/pdf";
       } else {
-        // Fallback buffer for unhandled custom engines
+        // Fallback pass-through for custom transformations
         outputBuffer = inputBuffer;
       }
 

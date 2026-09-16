@@ -119,6 +119,65 @@ export async function resolvePlanFromRequest(req: NextRequest): Promise<Plan> {
 }
 
 /**
+ * Resolves the authenticated user ID and role if available.
+ */
+export async function resolveUserFromRequest(
+  req: NextRequest | Request
+): Promise<{ id: string; email?: string; role?: string; plan: Plan } | null> {
+  const sessionToken = getSessionTokenFromRequest(req);
+  if (sessionToken) {
+    try {
+      const session = await prisma.session.findUnique({
+        where: { token: sessionToken },
+        select: {
+          user: {
+            select: { id: true, email: true, plan: true, role: true, banned: true },
+          },
+        },
+      });
+      if (session?.user && !session.user.banned) {
+        return {
+          id: session.user.id,
+          email: session.user.email,
+          role: session.user.role,
+          plan: session.user.plan as Plan,
+        };
+      }
+    } catch {
+      /* ignore DB lookup error */
+    }
+  }
+
+  // Also check Bearer API key
+  const authHeader = req.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const apiKeyVal = authHeader.substring(7).trim();
+    try {
+      const keyRecord = await prisma.apiKey.findUnique({
+        where: { key: apiKeyVal },
+        select: {
+          user: {
+            select: { id: true, email: true, plan: true, role: true, banned: true },
+          },
+        },
+      });
+      if (keyRecord?.user && !keyRecord.user.banned) {
+        return {
+          id: keyRecord.user.id,
+          email: keyRecord.user.email,
+          role: keyRecord.user.role,
+          plan: keyRecord.user.plan as Plan,
+        };
+      }
+    } catch {
+      /* ignore DB lookup error */
+    }
+  }
+
+  return null;
+}
+
+/**
  * Invalidate all Redis plan cache entries for a user upon subscription updates.
  */
 export async function invalidateUserPlanCache(userId: string): Promise<void> {

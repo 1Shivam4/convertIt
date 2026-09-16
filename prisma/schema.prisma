@@ -25,6 +25,8 @@ model User {
   plan               Plan          @default(FREE)
   planExpiresAt      DateTime?
   razorpayCustomerId String?
+  role               Role          @default(USER)
+  banned             Boolean       @default(false)
 
   sessions           Session[]
   accounts           Account[]
@@ -79,8 +81,8 @@ model Verification {
 
 model Job {
   id           String       @id @default(cuid())
-  userId       String
-  user         User         @relation(fields: [userId], references: [id])
+  userId       String?
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
   status       JobStatus    @default(QUEUED)
   sourceFormat String
   targetFormat String
@@ -157,4 +159,10 @@ enum Plan {
   FREE
   STANDARD
   PRO
-}
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+

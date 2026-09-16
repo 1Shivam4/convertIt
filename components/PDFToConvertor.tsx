@@ -317,7 +317,7 @@ export default function PDFToConvertor() {
           signal: controller.signal,
         });
 
-        if (!response.ok) {
+        if (!response.ok && response.status !== 202) {
           const errText = await response
             .text()
             .catch(() => "Conversion failed");
@@ -332,8 +332,6 @@ export default function PDFToConvertor() {
             message || `Server responded with status ${response.status}`,
           );
         }
-
-        const resultBlob = await response.blob();
 
         const baseName =
           file.name.substring(0, file.name.lastIndexOf(".")) || file.name;
@@ -358,6 +356,45 @@ export default function PDFToConvertor() {
         }
         const finalFileName = `${baseName}${outExt}`;
 
+        // ── Check if response is an asynchronous BullMQ background job ─────────
+        const contentType = response.headers.get("content-type") || "";
+        if (response.status === 202 || contentType.includes("application/json")) {
+          const json = await response.json();
+          if (json.mode === "async" && json.jobId) {
+            // Poll for completion
+            let finished = false;
+            while (!finished && !controller.signal.aborted) {
+              await new Promise((r) => setTimeout(r, 1200));
+              if (controller.signal.aborted) break;
+
+              const pollRes = await fetch(`/api/jobs/${json.jobId}/status`, {
+                signal: controller.signal,
+              });
+              if (pollRes.ok) {
+                const pollData = await pollRes.json();
+                if (pollData.status === "COMPLETED") {
+                  const downloadUrl =
+                    pollData.downloadUrl || `/api/jobs/${json.jobId}/download`;
+                  const fileRes = await fetch(downloadUrl, {
+                    signal: controller.signal,
+                  });
+                  const fileBlob = await fileRes.blob();
+                  completeConversion(fileBlob, finalFileName);
+                  finished = true;
+                  return;
+                } else if (pollData.status === "FAILED") {
+                  throw new Error(
+                    pollData.error || "Background conversion job failed",
+                  );
+                }
+              }
+            }
+            return;
+          }
+        }
+
+        // Fast-path synchronous stream
+        const resultBlob = await response.blob();
         completeConversion(resultBlob, finalFileName);
       } catch (err: any) {
         if (err.name === "AbortError") {
