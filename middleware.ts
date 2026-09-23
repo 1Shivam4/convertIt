@@ -1,18 +1,35 @@
 /**
- * middleware.ts (Next.js 15 Standard Middleware)
+ * middleware.ts (Next.js 15 Edge Middleware)
  * ─────────────────────────────────────────────────────────────────────────────
- * Route protection + rate limiting + plan header injection.
+ * IMPORTANT: This file runs in the Edge Runtime — NO Node.js APIs allowed.
+ * That means NO ioredis, NO Prisma, NO pg, NO Buffer, NO native modules.
+ *
+ * Responsibilities here are intentionally lightweight:
+ *  1. Redirect unauthenticated users away from /dashboard
+ *  2. Redirect authenticated users away from /sign-in and /sign-up
+ *  3. Inject an x-pathname header so server components can read the current path
+ *
+ * Rate limiting & plan resolution happen inside API route handlers (Node.js
+ * runtime) where ioredis and Prisma are both available.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { checkRateLimit } from "@/app/lib/rate-limit";
-import { resolvePlanFromRequest, getSessionTokenFromRequest } from "@/app/lib/resolve-plan";
 
-export async function middleware(request: NextRequest) {
+/** Extract the Better Auth session token from cookies — Edge-compatible. */
+function getSessionToken(req: NextRequest): string | null {
+  // NextRequest.cookies is available in Edge — safe to use
+  return (
+    req.cookies.get("better-auth.session_token")?.value ||
+    req.cookies.get("__Secure-better-auth.session_token")?.value ||
+    null
+  );
+}
+
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const sessionToken = getSessionToken(request);
 
   // ── 1. Dashboard protection — redirect if no session ─────────────────────
-  const sessionToken = getSessionTokenFromRequest(request);
   if (pathname.startsWith("/dashboard") && !sessionToken) {
     return NextResponse.redirect(new URL("/sign-in", request.url));
   }
@@ -22,49 +39,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // ── 3. API conversion routes: resolve plan + rate limit + inject header ───
-  const isApiRoute =
-    pathname.startsWith("/api/pdf") ||
-    pathname.startsWith("/api/image") ||
-    pathname.startsWith("/api/media") ||
-    pathname.startsWith("/api/storage");
+  // ── 3. Pass x-pathname header so layouts/server components know the route ─
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
 
-  if (isApiRoute) {
-    // Resolve the user's plan (Redis-cached, 60s TTL)
-    const plan = await resolvePlanFromRequest(request);
-
-    // Enforce rate limiting for this plan tier
-    const rateResult = await checkRateLimit(request, plan);
-
-    if (!rateResult.success) {
-      return NextResponse.json(
-        {
-          error: `Rate limit exceeded. Please wait ${rateResult.resetSeconds}s before retrying.`,
-          plan,
-        },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(rateResult.resetSeconds),
-            "X-RateLimit-Limit": String(rateResult.limit),
-            "X-RateLimit-Remaining": String(rateResult.remaining),
-            "X-RateLimit-Reset": String(rateResult.resetSeconds),
-            "X-User-Plan": plan,
-          },
-        }
-      );
-    }
-
-    // Inject the resolved plan into the request so API route handlers can read it
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-user-plan", plan);
-
-    return NextResponse.next({
-      request: { headers: requestHeaders },
-    });
-  }
-
-  return NextResponse.next();
+  return NextResponse.next({
+    request: { headers: requestHeaders },
+  });
 }
 
 export const config = {
@@ -72,6 +53,10 @@ export const config = {
     "/dashboard/:path*",
     "/sign-in",
     "/sign-up",
+    /*
+     * API routes are matched so the x-pathname header is injected,
+     * but rate limiting is enforced inside each route handler (Node.js runtime).
+     */
     "/api/pdf/:path*",
     "/api/image/:path*",
     "/api/media/:path*",

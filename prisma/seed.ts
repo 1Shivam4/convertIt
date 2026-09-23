@@ -14,26 +14,32 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
-// Initialize Prisma directly for seeding (no globalThis cache needed)
-const adapter = new PrismaNeon({ connectionString: process.env.DIRECT_URL! });
-const prisma = new PrismaClient({ adapter } as any);
+// Initialize Prisma client dual-compatibly for seeding
+const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL || "";
+const adapter = connectionString.includes("neon.tech")
+  ? new PrismaNeon({ connectionString })
+  : new PrismaPg(new Pool({ connectionString }));
+
+const prisma = new PrismaClient({ adapter });
 
 const TEST_USERS = [
   {
-    email: "free@convertit.test",
+    email: "freeaccount@gmail.com",
     name: "Free User",
     password: "Test@123!",
     plan: "FREE" as const,
   },
   {
-    email: "standard@convertit.test",
+    email: "standardaccount@gmail.com",
     name: "Standard User",
     password: "Test@123!",
     plan: "STANDARD" as const,
   },
   {
-    email: "pro@convertit.test",
+    email: "proaccount@gmail.com",
     name: "Pro User",
     password: "Test@123!",
     plan: "PRO" as const,
