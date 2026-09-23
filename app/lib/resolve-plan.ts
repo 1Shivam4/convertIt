@@ -19,20 +19,28 @@ const CACHE_TTL_SECONDS = 60;
  */
 export function getSessionTokenFromRequest(req: NextRequest | Request): string | null {
   try {
+    let rawToken: string | null | undefined;
+
     if ("cookies" in req && req.cookies && typeof req.cookies.get === "function") {
-      const token =
+      rawToken =
         req.cookies.get("better-auth.session_token")?.value ||
         req.cookies.get("__Secure-better-auth.session_token")?.value;
-      if (token) return token;
     }
 
-    const cookieHeader = req.headers.get("cookie");
-    if (!cookieHeader) return null;
+    if (!rawToken) {
+      const cookieHeader = req.headers.get("cookie");
+      if (cookieHeader) {
+        const match = cookieHeader.match(
+          /(?:^|;\s*)(?:__Secure-)?better-auth\.session_token=([^;]+)/
+        );
+        rawToken = match ? decodeURIComponent(match[1]) : null;
+      }
+    }
 
-    const match = cookieHeader.match(
-      /(?:^|;\s*)(?:__Secure-)?better-auth\.session_token=([^;]+)/
-    );
-    return match ? decodeURIComponent(match[1]) : null;
+    if (!rawToken) return null;
+
+    // Better Auth signs cookies as "token.signature" — strip signature for DB query
+    return rawToken.split(".")[0];
   } catch (err) {
     console.error("[SessionExtract] Error reading session token:", err);
     return null;

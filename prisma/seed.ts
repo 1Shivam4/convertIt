@@ -27,22 +27,32 @@ const prisma = new PrismaClient({ adapter });
 
 const TEST_USERS = [
   {
+    email: "admin@convertit.test",
+    name: "System Admin",
+    password: "Admin@123!",
+    plan: "PRO" as const,
+    role: "ADMIN" as const,
+  },
+  {
     email: "freeaccount@gmail.com",
     name: "Free User",
     password: "Test@123!",
     plan: "FREE" as const,
+    role: "USER" as const,
   },
   {
     email: "standardaccount@gmail.com",
     name: "Standard User",
     password: "Test@123!",
     plan: "STANDARD" as const,
+    role: "USER" as const,
   },
   {
     email: "proaccount@gmail.com",
     name: "Pro User",
     password: "Test@123!",
     plan: "PRO" as const,
+    role: "USER" as const,
   },
 ];
 
@@ -66,12 +76,12 @@ async function main() {
     });
 
     if (existing) {
-      // Update plan if user already exists
+      // Update plan and role if user already exists
       await prisma.user.update({
         where: { email: userData.email },
-        data: { plan: userData.plan, emailVerified: true },
+        data: { plan: userData.plan, role: userData.role, emailVerified: true },
       });
-      console.log(`✅ Updated existing user: ${userData.email} → ${userData.plan}`);
+      console.log(`✅ Updated existing user: ${userData.email} → ${userData.plan} (${userData.role})`);
       continue;
     }
 
@@ -88,6 +98,7 @@ async function main() {
           name: userData.name,
           emailVerified: true, // Skip email verification for test users
           plan: userData.plan,
+          role: userData.role,
           createdAt: now,
           updatedAt: now,
         },

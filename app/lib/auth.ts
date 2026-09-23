@@ -7,6 +7,21 @@ import { enqueueEmailJob } from "@/app/lib/queue";
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
 
+  user: {
+    additionalFields: {
+      plan: {
+        type: "string",
+        required: false,
+        defaultValue: "FREE",
+      },
+      role: {
+        type: "string",
+        required: false,
+        defaultValue: "USER",
+      },
+    },
+  },
+
   secret: process.env.BETTER_AUTH_SECRET!,
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
   trustedOrigins: ["http://localhost:3000"],

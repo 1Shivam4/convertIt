@@ -106,7 +106,24 @@ This document provides a comprehensive overview of the architectural foundation,
 
 ---
 
-## 6. Testing & Verification
+## 6. Admin Control Center (`/admin`)
+
+- **Dedicated Admin Authentication (`/admin/login`)**: Isolated login screen with `role === "ADMIN"` verification.
+- **Server Guard (`app/lib/admin-guard.ts`)**: RBAC middleware protecting all `/api/admin/*` endpoints.
+- **Admin Functional Modules**:
+  - **Overview (`/admin`)**: Real-time throughput metrics, queue loads, and engine pulse.
+  - **User Directory (`/admin/users`)**: Search, filter, plan modifications (`FREE`, `STANDARD`, `PRO`), instant ban/unban, and deletions.
+  - **Provisioning & Invites (`/admin/users/create`)**: Direct user creation and 7-day magic invite links.
+  - **Token Distribution (`/admin/tokens`)**: Credit distribution and immutable transaction ledger.
+  - **BullMQ Queues (`/admin/queues`)**: Live worker gauges, Pause/Resume queue, and Retry All Failed jobs.
+  - **Conversion Logs (`/admin/jobs`)**: Conversion logs with engine error output inspector and retry triggers.
+  - **Engine Diagnostics (`/admin/system`)**: Live latency diagnostics for PostgreSQL, Redis, Gotenberg, FFmpeg, and Sharp.
+  - **Announcements (`/admin/announcements`)**: Platform banner broadcasts targeted by user tier.
+- **Full Guide & Credentials**: See [dev_doc/ADMIN_DOC.md](file:///dev_doc/ADMIN_DOC.md).
+
+---
+
+## 7. Testing & Verification
 
 - **Vitest 4 Test Suite**: 79 passing tests across 11 test files (`100%` pass rate).
-- **TypeScript Check**: `bun run tsc --noEmit` passed with 0 errors.
+- **TypeScript Check**: Passed with 0 errors.

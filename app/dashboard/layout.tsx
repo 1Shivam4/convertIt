@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { useSession, signOut } from "@/app/lib/auth-client";
 
+import { useState, useEffect } from "react";
+
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/history", label: "Job History", icon: History },
@@ -28,6 +30,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = useSession();
+  const [liveUser, setLiveUser] = useState<any>(null);
+
+  useEffect(() => {
+    fetch("/api/user/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.user) {
+          setLiveUser(data.user);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -43,7 +57,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  const user = session?.user;
+  const user = liveUser || session?.user;
 
   return (
     <div className="min-h-screen bg-[#0b0d11] text-white flex">
