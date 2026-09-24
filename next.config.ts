@@ -18,6 +18,35 @@ const nextConfig: NextConfig = {
     "*.ngrok-free.dev",
     "*.ngrok.io",
   ],
+  async redirects() {
+    return [
+      {
+        source: "/tools/convert-pdf",
+        destination: "/tools/pdf",
+        permanent: true,
+      },
+      {
+        source: "/tools/convert-image",
+        destination: "/tools/image",
+        permanent: true,
+      },
+      {
+        source: "/tools/compress-image",
+        destination: "/tools/image",
+        permanent: true,
+      },
+      {
+        source: "/tools/convert-media",
+        destination: "/tools/media",
+        permanent: true,
+      },
+      {
+        source: "/tools/convert-video",
+        destination: "/tools/media",
+        permanent: true,
+      },
+    ];
+  },
   webpack(config, { isServer }) {
     if (!isServer) {
       // Tell webpack to ignore node: scheme imports in the client bundle.

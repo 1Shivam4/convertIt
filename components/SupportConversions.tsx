@@ -59,9 +59,12 @@ export default function SupportConversions() {
             </div>
 
             <div className="mt-6 pt-4 border-t border-white/5">
-              <span className="text-xs font-medium text-red-400 group-hover:underline inline-flex items-center gap-1">
+              <Link
+                href={`/tools/${category.conversionType === "developer" ? "developer" : category.conversionType}`}
+                className="text-xs font-medium text-red-400 group-hover:underline inline-flex items-center gap-1"
+              >
                 Explore all {category.name} tools &rarr;
-              </span>
+              </Link>
             </div>
           </div>
         ))}

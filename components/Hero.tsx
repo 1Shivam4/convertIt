@@ -15,7 +15,7 @@ export default function Hero() {
         </h1>
 
         <p className="text-lg sm:text-xl text-slate-300 max-w-2xl font-normal leading-relaxed">
-          Drop a file and pick what to turn it into. CloudConvert handles 200+
+          Drop a file and pick what to turn it into. ConvertIt handles 200+
           formats across documents, images, audio, video, archives and more —
           straight from your browser.
         </p>
