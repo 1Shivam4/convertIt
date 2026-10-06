@@ -12,7 +12,8 @@ import { consumeEngineQuota, getClientIdentifier } from "@/app/lib/engine-quota"
 import { shouldOffloadToWorker } from "@/app/lib/adaptiveRouter";
 import { enqueueConversionJob } from "@/app/lib/queue";
 import { resolveUserFromRequest } from "@/app/lib/resolve-plan";
-import type { Plan } from "@/app/lib/plans";
+import { PLAN_LIMITS, type Plan } from "@/app/lib/plans";
+import { validateImageBatch } from "@/app/lib/file/image-format-guards";
 import JSZip from "jszip";
 
 export async function POST(req: NextRequest) {
@@ -25,12 +26,37 @@ export async function POST(req: NextRequest) {
       return new Response("No image files uploaded.", { status: 400 });
     }
 
+    // ── Single file type policy: Ensure all files are supported images ─────────
+    const validation = validateImageBatch(files);
+    if (!validation.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: validation.message,
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // ── Plan-based file size enforcement ─────────────────────────────────────
     const guard = guardFileSizeBatch(req, files);
     if (!guard.allowed) return fileSizeErrorResponse(guard);
 
-    // ── Plan-based daily image quota check ───────────────────────────────────
+    // ── Plan-based batch count enforcement ───────────────────────────────────
     const plan = (req.headers.get("x-user-plan") as Plan) || "GUEST";
+    const planLimits = PLAN_LIMITS[plan] || PLAN_LIMITS.GUEST;
+    if (files.length > planLimits.maxBatchImages) {
+      return new Response(
+        JSON.stringify({
+          error: `Your ${planLimits.label} plan allows up to ${planLimits.maxBatchImages} images per batch conversion.`,
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // ── Plan-based daily image quota check ───────────────────────────────────
     const clientId = getClientIdentifier(req);
     const quota = await consumeEngineQuota(clientId, "image", plan, files.length);
 

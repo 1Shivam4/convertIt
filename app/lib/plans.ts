@@ -22,6 +22,8 @@ export type PlanConfig = {
   canUseApiKeys: boolean;
   /** Max concurrent file uploads allowed */
   concurrentUploads: number;
+  /** Max images allowed in a single batch conversion */
+  maxBatchImages: number;
   /** Human-readable display label */
   label: string;
   /** Badge color class for DaisyUI */
@@ -46,6 +48,7 @@ export const PLAN_LIMITS = {
     queuePriority: 10,
     canUseApiKeys: false,
     concurrentUploads: 1,
+    maxBatchImages: 10,
     label: "Guest",
     badgeColor: "badge-ghost",
     priceInr: 0,
@@ -63,6 +66,7 @@ export const PLAN_LIMITS = {
     queuePriority: 5,
     canUseApiKeys: false,
     concurrentUploads: 2,
+    maxBatchImages: 10,
     label: "Free",
     badgeColor: "badge-neutral",
     priceInr: 0,
@@ -80,6 +84,7 @@ export const PLAN_LIMITS = {
     queuePriority: 2,
     canUseApiKeys: true,
     concurrentUploads: 5,
+    maxBatchImages: 30,
     label: "Standard",
     badgeColor: "badge-info",
     priceInr: 499,
@@ -97,6 +102,7 @@ export const PLAN_LIMITS = {
     queuePriority: 1,
     canUseApiKeys: true,
     concurrentUploads: 10,
+    maxBatchImages: 50,
     label: "Pro",
     badgeColor: "badge-warning",
     priceInr: 1499,

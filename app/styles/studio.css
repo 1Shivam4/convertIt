@@ -1,0 +1,164 @@
+/* ==========================================================================
+   ConvertIt — Studio & Workstation Standardized Design Tokens
+   File: app/styles/studio.css
+   ========================================================================== */
+
+/* ── 1. TYPOGRAPHY HIERARCHY ────────────────────────────────────────────── */
+
+.studio-step-title {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 700;
+  line-height: 1.25rem;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+}
+
+.studio-step-subtitle {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 0.75rem; /* 12px */
+  font-weight: 400;
+  line-height: 1rem;
+  color: #94a3b8; /* slate-400 */
+}
+
+.studio-label {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 0.8125rem; /* 13px */
+  font-weight: 600;
+  color: #e2e8f0; /* slate-200 */
+  letter-spacing: -0.005em;
+}
+
+.studio-mono {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.6875rem; /* 11px */
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #94a3b8;
+}
+
+/* ── 2. WORKSTATION SURFACES & CONTAINERS ────────────────────────────────── */
+
+.studio-card {
+  background: #0d1117;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+}
+
+.studio-badge-step {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  background-color: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.studio-dropzone {
+  border: 1.5px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 0.875rem;
+  background: rgba(255, 255, 255, 0.015);
+  transition: all 0.2s ease-in-out;
+}
+
+.studio-dropzone:hover,
+.studio-dropzone.drag-active {
+  border-color: rgba(239, 68, 68, 0.6);
+  background: rgba(239, 68, 68, 0.03);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);
+}
+
+/* ── 3. BUTTONS & FORMAT TILES ──────────────────────────────────────────── */
+
+.studio-btn-primary {
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0.75rem;
+  transition: all 0.15s ease-in-out;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+}
+
+.studio-btn-primary:hover:not(:disabled) {
+  background: #ef4444;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.45);
+  transform: translateY(-1px);
+}
+
+.studio-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.studio-format-tile {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+  transition: all 0.15s ease-in-out;
+  cursor: pointer;
+}
+
+.studio-format-tile:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.studio-format-tile.selected {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+  box-shadow: 0 0 0 1px #ef4444, 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+/* ── 4. CUSTOM RED RANGE SLIDER ─────────────────────────────────────────── */
+
+.studio-range-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  outline: none;
+}
+
+.studio-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #ef4444;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+  transition: transform 0.1s ease;
+}
+
+.studio-range-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+/* ── 5. SCROLLBARS ──────────────────────────────────────────────────────── */
+
+.studio-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.studio-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.studio-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+}
+
+.studio-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(239, 68, 68, 0.4);
+}

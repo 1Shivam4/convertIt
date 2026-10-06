@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
     "@prisma/adapter-neon",
     "pg",
     "@valkey/valkey-glide",
+    "heic-convert",
+    "heic-decode",
+    "libheif-js",
   ],
   allowedDevOrigins: [
     "threefold-expand-unclasp.ngrok-free.dev",
@@ -27,12 +30,17 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/tools/convert-image",
-        destination: "/tools/image",
+        destination: "/images-convert",
         permanent: true,
       },
       {
         source: "/tools/compress-image",
-        destination: "/tools/image",
+        destination: "/images-convert",
+        permanent: true,
+      },
+      {
+        source: "/tools/image",
+        destination: "/images-convert",
         permanent: true,
       },
       {

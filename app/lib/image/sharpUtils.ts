@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import convertHeic from "heic-convert";
 
 export interface ImageTransformOptions {
   targetFormat: string;
@@ -18,6 +19,24 @@ export interface ConvertedImageResult {
   buffer: Buffer;
   contentType: string;
   extension: string;
+}
+
+/**
+ * Checks if a buffer represents an Apple HEIC / HEIF image container.
+ */
+function isHeicBuffer(buffer: Buffer): boolean {
+  if (buffer.length < 12) return false;
+  const brand = buffer.toString("ascii", 4, 12);
+  return (
+    brand.includes("ftypheic") ||
+    brand.includes("ftypmif1") ||
+    brand.includes("ftypmsf1") ||
+    brand.includes("ftyphevc") ||
+    brand.includes("ftypheix") ||
+    brand.includes("heic") ||
+    brand.includes("heix") ||
+    brand.includes("mif1")
+  );
 }
 
 /**
@@ -80,6 +99,19 @@ export async function processImageTransform(
   inputBuffer: Buffer,
   options: ImageTransformOptions,
 ): Promise<ConvertedImageResult> {
+  // Decode HEIC/HEIF containers into standard PNG if detected
+  if (isHeicBuffer(inputBuffer)) {
+    try {
+      const decodedBuffer = await convertHeic({
+        buffer: inputBuffer,
+        format: "PNG",
+      });
+      inputBuffer = Buffer.from(decodedBuffer);
+    } catch (err) {
+      console.error("HEIC decoding fallback error:", err);
+    }
+  }
+
   let pipeline = sharp(inputBuffer);
 
   // Auto-rotate based on EXIF orientation if available

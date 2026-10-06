@@ -3,17 +3,28 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { navbarItems } from "../app/utils/vars";
 import { NavbarItemsProps } from "../app/utils/typeDefinitions";
 
 export default function NavItems() {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const pathname = usePathname();
+
+  const isItemActive = (name: string) => {
+    if (name === "Image") return pathname === "/images-convert" || pathname.startsWith("/tools/image");
+    if (name === "PDF") return pathname.startsWith("/tools/pdf");
+    if (name === "Media") return pathname.startsWith("/tools/media");
+    if (name === "Developer Tools") return pathname.startsWith("/tools/developer");
+    return false;
+  };
 
   return (
     <nav className="hidden md:flex items-center gap-1">
       {navbarItems.map((item: NavbarItemsProps) => {
         const isOpen = activeMenu === item.name;
+        const isActive = isItemActive(item.name);
 
         return (
           <div
@@ -24,8 +35,10 @@ export default function NavItems() {
           >
             <button
               type="button"
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                isOpen
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-colors relative ${
+                isActive
+                  ? "text-white after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-red-500 after:rounded-full after:shadow-[0_0_8px_rgba(239,68,68,0.8)]"
+                  : isOpen
                   ? "text-white bg-white/10"
                   : "text-slate-300 hover:text-white hover:bg-white/5"
               }`}

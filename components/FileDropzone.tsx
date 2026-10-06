@@ -1,8 +1,11 @@
 "use client";
 
 import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useRouter } from "next/navigation";
 import { CloudUpload, FileText, X, Loader2, Zap } from "lucide-react";
+import { toast } from "sonner";
 import { useConverterStore } from "../app/store/useFileDetectionStore";
+import { useImageConversionStore } from "../app/store/useImageConversionStore";
 import { detectFileType } from "../app/lib/file/detect_file_types";
 import { useSession } from "../app/lib/auth-client";
 import {
@@ -11,11 +14,17 @@ import {
   getUpgradeMessage,
   type Plan,
 } from "../app/lib/plans";
+import {
+  validateImageBatch,
+  isSupportedImageFile,
+  isKnownImageFile,
+} from "../app/lib/file/image-format-guards";
 import PDFToConvertor from "./PDFToConvertor";
 import ImageToConvertor from "./ImageToConvertor";
 import MediaToConvertor from "./MediaToConvertor";
 
 export default function FileDropzone() {
+  const router = useRouter();
   const { data: session } = useSession();
   const userPlan: Plan = session?.user
     ? (((session.user as any).plan as Plan) ?? "FREE")
@@ -26,6 +35,7 @@ export default function FileDropzone() {
     file,
     stage,
     sourceType,
+    error,
     setFile,
     addFiles,
     setSourceType,
@@ -49,6 +59,25 @@ export default function FileDropzone() {
 
   const processFile = async (file: File) => {
     if (!validateFileSize([file])) return;
+
+    if (isSupportedImageFile(file)) {
+      reset();
+      addFiles([file]);
+      useImageConversionStore.getState().clearFiles();
+      useImageConversionStore.getState().addFiles([file]);
+      setSourceType({ extension: file.name.split(".").pop() || "img", mimeType: file.type || "image/jpeg" });
+      router.push("/images-convert");
+      return;
+    }
+
+    if (isKnownImageFile(file)) {
+      const val = validateImageBatch([file]);
+      if (!val.allowed) {
+        setError(val.message || "Unsupported image format.");
+        toast.error(val.message || "Unsupported image format.");
+        return;
+      }
+    }
 
     try {
       setFile(file);
@@ -91,8 +120,34 @@ export default function FileDropzone() {
     const dropped = Array.from(e.dataTransfer.files);
     if (dropped.length === 0) return;
 
+    // Check if any image files are present
+    const hasImages = dropped.some(isKnownImageFile);
+    if (hasImages) {
+      const validation = validateImageBatch(dropped);
+      if (!validation.allowed) {
+        setError(validation.message || "Invalid files uploaded.");
+        toast.error(validation.message || "Invalid files uploaded.");
+        return;
+      }
+
+      const maxBatch = planLimits.maxBatchImages || 10;
+      if (dropped.length > maxBatch) {
+        setError(
+          `Your ${planLimits.label} plan allows up to ${maxBatch} images per batch. Upgrade to Standard (30) or Pro (50) for larger batches.`
+        );
+        return;
+      }
+      if (!validateFileSize(dropped)) return;
+      reset();
+      addFiles(dropped);
+      useImageConversionStore.getState().clearFiles();
+      useImageConversionStore.getState().addFiles(dropped);
+      setSourceType({ extension: "img", mimeType: "image/jpeg" });
+      router.push("/images-convert");
+      return;
+    }
+
     // Multi-file drop: if every file is a PDF, load them all at once
-    // and skip per-file MIME detection (type is already known)
     const allPDFs = dropped.every(
       (f) =>
         f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"),
@@ -113,6 +168,31 @@ export default function FileDropzone() {
     const selected = Array.from(e.target.files ?? []);
     if (selected.length === 0) return;
 
+    const hasImages = selected.some(isKnownImageFile);
+    if (hasImages) {
+      const validation = validateImageBatch(selected);
+      if (!validation.allowed) {
+        setError(validation.message || "Invalid files uploaded.");
+        toast.error(validation.message || "Invalid files uploaded.");
+        return;
+      }
+
+      const maxBatch = planLimits.maxBatchImages || 10;
+      if (selected.length > maxBatch) {
+        setError(
+          `Your ${planLimits.label} plan allows up to ${maxBatch} images per batch. Upgrade to Standard (30) or Pro (50) for larger batches.`
+        );
+        return;
+      }
+      if (!validateFileSize(selected)) return;
+      reset();
+      addFiles(selected);
+      useImageConversionStore.getState().clearFiles();
+      useImageConversionStore.getState().addFiles(selected);
+      setSourceType({ extension: "img", mimeType: "image/jpeg" });
+      router.push("/images-convert");
+    }
+
     const allPDFs = selected.every(
       (f) =>
         f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"),
@@ -126,7 +206,6 @@ export default function FileDropzone() {
       await processFile(selected[0]);
     }
 
-    // Allow re-selecting the same file(s) again
     e.target.value = "";
   };
 
@@ -246,6 +325,27 @@ export default function FileDropzone() {
         onChange={handleFileChange}
         className="hidden"
       />
+
+      {error && (
+        <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex items-start justify-between gap-3 animate-in fade-in">
+          <div className="flex items-start gap-2.5">
+            <span className="p-1 rounded-md bg-red-500/20 text-red-400 mt-0.5 shrink-0">
+              <X className="w-3.5 h-3.5" />
+            </span>
+            <p className="font-medium leading-relaxed">{error}</p>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              reset();
+            }}
+            className="text-red-400/80 hover:text-red-300 p-1 shrink-0 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       <div
         onDragOver={handleDragOver}

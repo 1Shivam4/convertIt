@@ -93,31 +93,31 @@ export const navbarItems: NavbarItemsProps[] = [
     itemsList: [
       {
         name: "Compress Image",
-        location: "/tools/image?tool=compress-image",
+        location: "/images-convert?tool=compress-image",
         icon: "/icons/compress.svg",
         description: "Reduce image file size while keeping quality",
       },
       {
         name: "Convert to WebP",
-        location: "/tools/image?tool=webp",
+        location: "/images-convert?tool=webp",
         icon: "/icons/png.svg",
         description: "Convert images to next-gen WebP format",
       },
       {
         name: "Convert to PNG",
-        location: "/tools/image?tool=png",
+        location: "/images-convert?tool=png",
         icon: "/icons/png.svg",
         description: "Convert images to transparent PNG format",
       },
       {
         name: "Convert to JPG",
-        location: "/tools/image?tool=jpg",
+        location: "/images-convert?tool=jpg",
         icon: "/icons/png.svg",
         description: "Convert any format to universal JPEG",
       },
       {
         name: "Generate Favicon (.ico)",
-        location: "/tools/image?tool=ico",
+        location: "/images-convert?tool=ico",
         icon: "/icons/png.svg",
         description: "Create multi-resolution favicon icons",
       },
