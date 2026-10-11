@@ -19,8 +19,12 @@ export type FileGuardResult =
  * @param req       The incoming NextRequest (reads X-User-Plan header)
  * @param fileSize  File size in bytes to check
  */
-export function guardFileSize(req: NextRequest, fileSize: number): FileGuardResult {
-  const plan = (req.headers.get("x-user-plan") as Plan | null) ?? "GUEST";
+export function guardFileSize(
+  req: NextRequest,
+  fileSize: number,
+  planOverride?: Plan
+): FileGuardResult {
+  const plan = planOverride ?? (req.headers.get("x-user-plan") as Plan | null) ?? "GUEST";
   const limits = getPlanLimits(plan);
 
   if (fileSize > limits.maxFileSizeBytes) {
@@ -42,9 +46,10 @@ export function guardFileSize(req: NextRequest, fileSize: number): FileGuardResu
  */
 export function guardFileSizeBatch(
   req: NextRequest,
-  files: File[]
+  files: File[],
+  planOverride?: Plan
 ): FileGuardResult {
-  const plan = (req.headers.get("x-user-plan") as Plan | null) ?? "GUEST";
+  const plan = planOverride ?? (req.headers.get("x-user-plan") as Plan | null) ?? "GUEST";
   const limits = getPlanLimits(plan);
 
   for (const file of files) {

@@ -6,6 +6,7 @@ import {
   fileSizeErrorResponse,
 } from "@/app/lib/file-guard";
 import { consumeEngineQuota, getClientIdentifier } from "@/app/lib/engine-quota";
+import { resolveUserFromRequest, resolvePlanFromRequest } from "@/app/lib/resolve-plan";
 import type { Plan } from "@/app/lib/plans";
 import JSZip from "jszip";
 
@@ -20,13 +21,16 @@ export async function POST(req: NextRequest) {
       return new Response("No image files uploaded.", { status: 400 });
     }
 
+    // ── Resolve authenticated user & plan ────────────────────────────────────
+    const user = await resolveUserFromRequest(req);
+    const plan: Plan = user?.plan || (await resolvePlanFromRequest(req));
+
     // ── Plan-based file size enforcement ─────────────────────────────────────
-    const guard = guardFileSizeBatch(req, files);
+    const guard = guardFileSizeBatch(req, files, plan);
     if (!guard.allowed) return fileSizeErrorResponse(guard);
 
     // ── Plan-based daily image quota check ───────────────────────────────────
-    const plan = (req.headers.get("x-user-plan") as Plan) || "GUEST";
-    const clientId = getClientIdentifier(req);
+    const clientId = user?.id || getClientIdentifier(req);
     const quota = await consumeEngineQuota(clientId, "image", plan, files.length);
 
     if (!quota.allowed) {

@@ -54,12 +54,9 @@ export const config = {
     "/sign-in",
     "/sign-up",
     /*
-     * API routes are matched so the x-pathname header is injected,
-     * but rate limiting is enforced inside each route handler (Node.js runtime).
+     * Note: API routes (/api/image, /api/pdf, /api/media) are intentionally excluded
+     * from middleware matcher so large multipart file uploads (up to 250MB) are not
+     * intercepted, buffered, or truncated at Edge runtime's 10MB limit.
      */
-    "/api/pdf/:path*",
-    "/api/image/:path*",
-    "/api/media/:path*",
-    "/api/storage/:path*",
   ],
 };

@@ -1,15 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import {
-  RotateCcw,
-  CheckCircle2,
-  Download,
-  Link as LinkIcon,
-  Info,
-  ChevronDown,
-  Sparkles,
-} from "lucide-react";
+import { RotateCcw, CheckCircle2, Download, Link as LinkIcon, Info, ChevronDown, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useImageConversionStore } from "@/app/store/useImageConversionStore";
 import { formatFileSize } from "@/app/lib/plans";
@@ -63,17 +55,18 @@ export default function OutputColumn() {
   };
 
   // Savings calculation
-  const originalBytes = activeFile?.size || 0;
+  const totalOriginalBytes = files.reduce((acc, f) => acc + f.size, 0);
+  const baselineBytes = isBatchZip ? totalOriginalBytes : activeFile?.size || 0;
   const convertedBytes = outputSize || 0;
   const savingsPct =
-    originalBytes > 0 && convertedBytes > 0
-      ? Math.max(0, Math.round(((originalBytes - convertedBytes) / originalBytes) * 100))
+    baselineBytes > 0 && convertedBytes > 0 && convertedBytes < baselineBytes
+      ? Math.max(0, Math.round(((baselineBytes - convertedBytes) / baselineBytes) * 100))
       : 0;
 
   return (
-    <section className="h-full flex flex-col min-h-0 studio-card p-5 overflow-hidden">
+    <section className="h-full flex flex-col min-h-0 studio-card p-4 sm:p-5 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-3 shrink-0 pb-4 border-b border-white/8">
+      <div className="flex items-center gap-3 shrink-0 pb-3 sm:pb-4 border-b border-white/8">
         <div className="studio-badge-step">
           <RotateCcw className="w-4 h-4" />
         </div>
@@ -84,7 +77,7 @@ export default function OutputColumn() {
       </div>
 
       {/* Scrollable Column Body */}
-      <div className="flex-1 min-h-0 overflow-y-auto studio-scrollbar py-4 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto studio-scrollbar pt-3 pb-8 space-y-4">
         {outputBlobUrl ? (
           <>
             {/* Converted Output Visual Preview */}
@@ -98,9 +91,7 @@ export default function OutputColumn() {
                     <span className="text-sm font-semibold text-white">
                       {selectedFormatId.toUpperCase()} Image Ready
                     </span>
-                    <span className="text-xs text-slate-400">
-                      High-Efficiency Image Container Encoded
-                    </span>
+                    <span className="text-xs text-slate-400">High-Efficiency Image Container Encoded</span>
                   </div>
                 ) : (
                   <Image
@@ -133,25 +124,24 @@ export default function OutputColumn() {
                   <p className="studio-mono text-[10px] text-slate-400">
                     {outputSize ? formatFileSize(outputSize) : ""}
                     {outputMeta && ` • ${outputMeta.width} × ${outputMeta.height}`}
-                    {!isBatchZip && (
+                    {!isBatchZip &&
                       ` • ${
                         selectedFormatId === "svg"
                           ? "image/svg+xml"
                           : selectedFormatId === "ico"
-                          ? "image/x-icon"
-                          : selectedFormatId === "jpg" || selectedFormatId === "jpeg"
-                          ? "image/jpeg"
-                          : selectedFormatId === "heic"
-                          ? "image/heic"
-                          : selectedFormatId === "heif"
-                          ? "image/heif"
-                          : `image/${selectedFormatId}`
-                      }`
-                    )}
+                            ? "image/x-icon"
+                            : selectedFormatId === "jpg" || selectedFormatId === "jpeg"
+                              ? "image/jpeg"
+                              : selectedFormatId === "heic"
+                                ? "image/heic"
+                                : selectedFormatId === "heif"
+                                  ? "image/heif"
+                                  : `image/${selectedFormatId}`
+                      }`}
                   </p>
                 </div>
               </div>
-              <div className="badge badge-success badge-sm gap-1 text-white font-medium shrink-0">
+              <div className=" px-2 badge badge-success badge-sm gap-1 text-white font-medium shrink-0">
                 <CheckCircle2 className="w-3 h-3" />
                 Done
               </div>
@@ -185,7 +175,7 @@ export default function OutputColumn() {
               </button>
             </div>
 
-            {/* Collapsible Image Details */}
+            {/* Collapsible Details Drawer */}
             <div className="border border-white/8 rounded-xl overflow-hidden bg-white/[0.015]">
               <button
                 type="button"
@@ -194,42 +184,44 @@ export default function OutputColumn() {
               >
                 <span className="flex items-center gap-2">
                   <Info className="w-3.5 h-3.5 text-slate-400" />
-                  Image Details
+                  {isBatchZip ? "Batch Archive Details" : "Image Details"}
                 </span>
                 <ChevronDown
-                  className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                    showDetails ? "rotate-180" : ""
-                  }`}
+                  className={`w-3.5 h-3.5 transition-transform duration-200 ${showDetails ? "rotate-180" : ""}`}
                 />
               </button>
 
               {showDetails && (
                 <div className="p-3.5 border-t border-white/8 space-y-2 text-xs">
                   <div className="flex justify-between py-1 border-b border-white/5">
-                    <span className="text-slate-400">Format</span>
+                    <span className="text-slate-400">{isBatchZip ? "Target Format" : "Format"}</span>
                     <span className="font-semibold text-white uppercase">{selectedFormatId}</span>
                   </div>
+                  {isBatchZip && (
+                    <div className="flex justify-between py-1 border-b border-white/5">
+                      <span className="text-slate-400">Archived Items</span>
+                      <span className="font-semibold text-white">{files.length} images</span>
+                    </div>
+                  )}
                   <div className="flex justify-between py-1 border-b border-white/5">
-                    <span className="text-slate-400">Size</span>
+                    <span className="text-slate-400">{isBatchZip ? "Archive Size" : "Size"}</span>
                     <span className="studio-mono font-semibold text-white flex items-center gap-1">
                       {outputSize ? formatFileSize(outputSize) : "—"}
-                      {savingsPct > 0 && (
-                        <span className="text-emerald-400 font-normal">
-                          (↓ {savingsPct}%)
-                        </span>
-                      )}
+                      {savingsPct > 0 && <span className="text-emerald-400 font-normal">(↓ {savingsPct}%)</span>}
                     </span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-white/5">
-                    <span className="text-slate-400">Dimensions</span>
-                    <span className="studio-mono text-white">
-                      {outputMeta
-                        ? `${outputMeta.width} × ${outputMeta.height}`
-                        : width && height
-                        ? `${width} × ${height}`
-                        : "Original"}
-                    </span>
-                  </div>
+                  {!isBatchZip && (
+                    <div className="flex justify-between py-1 border-b border-white/5">
+                      <span className="text-slate-400">Dimensions</span>
+                      <span className="studio-mono text-white">
+                        {outputMeta
+                          ? `${outputMeta.width} × ${outputMeta.height}`
+                          : width && height
+                            ? `${width} × ${height}`
+                            : "Original"}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between py-1 border-b border-white/5">
                     <span className="text-slate-400">Quality</span>
                     <span className="studio-mono text-white">{quality}%</span>

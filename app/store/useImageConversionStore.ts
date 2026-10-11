@@ -92,7 +92,7 @@ const defaultOptions = {
   quality: 85,
   width: null,
   height: null,
-  fitMode: "cover" as const,
+  fitMode: "contain" as const,
   rotateAngle: "0" as const,
   flipHorizontal: false,
   flipVertical: false,

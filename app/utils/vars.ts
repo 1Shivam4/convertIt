@@ -565,11 +565,11 @@ export const IMAGE_CATEGORIES = [
 ] as const;
 
 export const IMAGE_FIT_MODES = [
+  { id: "contain", label: "Contain (Preserve aspect ratio)" },
   { id: "cover", label: "Cover (Crop to fill)" },
-  { id: "contain", label: "Contain (Aspect fit)" },
-  { id: "fill", label: "Fill (Stretch)" },
-  { id: "inside", label: "Inside (Fit within bounds)" },
-  { id: "outside", label: "Outside (Cover min bounds)" },
+  { id: "fill", label: "Fill (Stretch to dimensions)" },
+  { id: "inside", label: "Inside (Fit without enlarging)" },
+  { id: "outside", label: "Outside (Cover minimum bounds)" },
 ] as const;
 
 export interface MediaFormatOption {

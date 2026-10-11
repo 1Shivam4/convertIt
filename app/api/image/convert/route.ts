@@ -11,10 +11,13 @@ import {
 import { consumeEngineQuota, getClientIdentifier } from "@/app/lib/engine-quota";
 import { shouldOffloadToWorker } from "@/app/lib/adaptiveRouter";
 import { enqueueConversionJob } from "@/app/lib/queue";
-import { resolveUserFromRequest } from "@/app/lib/resolve-plan";
+import { resolveUserFromRequest, resolvePlanFromRequest } from "@/app/lib/resolve-plan";
 import { PLAN_LIMITS, type Plan } from "@/app/lib/plans";
 import { validateImageBatch } from "@/app/lib/file/image-format-guards";
 import JSZip from "jszip";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,13 +40,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ── Resolve authenticated user & subscription plan tier ───────────────────
+    const user = await resolveUserFromRequest(req);
+    const plan: Plan = user?.plan || (await resolvePlanFromRequest(req));
+    const planLimits = PLAN_LIMITS[plan] || PLAN_LIMITS.GUEST;
+
     // ── Plan-based file size enforcement ─────────────────────────────────────
-    const guard = guardFileSizeBatch(req, files);
+    const guard = guardFileSizeBatch(req, files, plan);
     if (!guard.allowed) return fileSizeErrorResponse(guard);
 
     // ── Plan-based batch count enforcement ───────────────────────────────────
-    const plan = (req.headers.get("x-user-plan") as Plan) || "GUEST";
-    const planLimits = PLAN_LIMITS[plan] || PLAN_LIMITS.GUEST;
     if (files.length > planLimits.maxBatchImages) {
       return new Response(
         JSON.stringify({
@@ -57,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Plan-based daily image quota check ───────────────────────────────────
-    const clientId = getClientIdentifier(req);
+    const clientId = user?.id || getClientIdentifier(req);
     const quota = await consumeEngineQuota(clientId, "image", plan, files.length);
 
     if (!quota.allowed) {
@@ -85,11 +91,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Check total payload size or single file size for adaptive offloading
+    // Check total payload size for adaptive offloading (single heavy files or explicit forceAsync)
     const totalBytes = files.reduce((acc, f) => acc + f.size, 0);
-    const isBatchHeavy = files.length > 5;
 
-    if (shouldOffloadToWorker(totalBytes, parsedOptions.targetFormat, { isBatch: isBatchHeavy })) {
+    if (files.length === 1 && shouldOffloadToWorker(totalBytes, parsedOptions.targetFormat, parsedOptions)) {
       const user = await resolveUserFromRequest(req);
       const firstFile = files[0];
       const buffer = Buffer.from(await firstFile.arrayBuffer());
@@ -148,18 +153,28 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // If multiple files upload, bundle them into a ZIP archive
+    // If multiple files upload, bundle them into a valid ZIP archive
     const zip = new JSZip();
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const result = await processImageTransform(buffer, parsedOptions);
-      const originalName =
-        file.name.substring(0, file.name.lastIndexOf(".")) || `image_${i + 1}`;
-      zip.file(`${originalName}${result.extension}`, result.buffer);
+    // Process with controlled parallel concurrency (chunks of 6) to leverage multi-core libvips
+    const CONCURRENCY = 6;
+    for (let i = 0; i < files.length; i += CONCURRENCY) {
+      const chunk = files.slice(i, i + CONCURRENCY);
+      await Promise.all(
+        chunk.map(async (file, idx) => {
+          const buffer = Buffer.from(await file.arrayBuffer());
+          const result = await processImageTransform(buffer, parsedOptions);
+          const originalName =
+            file.name.substring(0, file.name.lastIndexOf(".")) || `image_${i + idx + 1}`;
+          zip.file(`${originalName}${result.extension}`, result.buffer);
+        })
+      );
     }
 
-    const zipContent = await zip.generateAsync({ type: "nodebuffer" });
+    const zipContent = await zip.generateAsync({
+      type: "nodebuffer",
+      compression: "DEFLATE",
+      compressionOptions: { level: 6 },
+    });
 
     recordUserJob(req, {
       sourceFormat: "batch",

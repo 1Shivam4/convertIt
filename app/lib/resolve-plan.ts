@@ -9,6 +9,7 @@
 import { NextRequest } from "next/server";
 import { redisConnection } from "@/app/lib/redis";
 import { prisma } from "@/app/lib/prisma";
+import { auth } from "@/app/lib/auth";
 import type { Plan } from "@/app/lib/plans";
 
 const CACHE_TTL_SECONDS = 60;
@@ -98,7 +99,17 @@ export async function resolvePlanFromRequest(req: NextRequest): Promise<Plan> {
     }
   }
 
-  // ── 2. Check Session Cookie ───────────────────────────────────────────────
+  // ── 2. Check Better Auth Native Session ──────────────────────────────────
+  try {
+    const session = await auth.api.getSession({ headers: req.headers });
+    if (session?.user?.plan) {
+      return session.user.plan as Plan;
+    }
+  } catch {
+    /* fallback to token extraction */
+  }
+
+  // ── 3. Check Session Cookie Token ─────────────────────────────────────────
   const sessionToken = getSessionTokenFromRequest(req);
   if (sessionToken) {
     const cacheKey = `plan:session:${sessionToken}`;
@@ -122,7 +133,7 @@ export async function resolvePlanFromRequest(req: NextRequest): Promise<Plan> {
     }
   }
 
-  // ── 3. Default: unauthenticated guest ─────────────────────────────────────
+  // ── 4. Default: unauthenticated guest ─────────────────────────────────────
   return "GUEST";
 }
 
@@ -132,6 +143,22 @@ export async function resolvePlanFromRequest(req: NextRequest): Promise<Plan> {
 export async function resolveUserFromRequest(
   req: NextRequest | Request
 ): Promise<{ id: string; email?: string; role?: string; plan: Plan } | null> {
+  // ── 1. Check Better Auth Native Session ──────────────────────────────────
+  try {
+    const session = await auth.api.getSession({ headers: req.headers });
+    if (session?.user?.id && !(session.user as any).banned) {
+      return {
+        id: session.user.id,
+        email: session.user.email,
+        role: (session.user as any).role || "USER",
+        plan: ((session.user as any).plan as Plan) || "FREE",
+      };
+    }
+  } catch {
+    /* fallback to manual token extraction */
+  }
+
+  // ── 2. Check Session Token Cookie ─────────────────────────────────────────
   const sessionToken = getSessionTokenFromRequest(req);
   if (sessionToken) {
     try {

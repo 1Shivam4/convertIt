@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Allow large document/image batches and video/audio uploads without Edge/middleware 10MB truncation
+  middlewareClientMaxBodySize: "250mb",
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "250mb",
+    },
+  },
   // Keep heavy server-only packages out of the browser/Edge bundle
   serverExternalPackages: [
     "bullmq",

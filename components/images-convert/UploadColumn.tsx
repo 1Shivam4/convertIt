@@ -165,7 +165,7 @@ export default function UploadColumn() {
   };
 
   return (
-    <section className="h-full flex flex-col min-h-0 studio-card p-5 overflow-hidden">
+    <section className="h-full flex flex-col min-h-0 studio-card p-4 sm:p-5 overflow-hidden">
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
@@ -177,7 +177,7 @@ export default function UploadColumn() {
       />
 
       {/* Header */}
-      <div className="flex items-center gap-3 shrink-0 pb-4 border-b border-white/8">
+      <div className="flex items-center gap-3 shrink-0 pb-3 sm:pb-4 border-b border-white/8">
         <div className="studio-badge-step">
           <Timer className="w-4 h-4" />
         </div>
@@ -188,7 +188,7 @@ export default function UploadColumn() {
       </div>
 
       {/* Scrollable Column Body */}
-      <div className="flex-1 min-h-0 overflow-y-auto studio-scrollbar py-4 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto studio-scrollbar pt-3 pb-8 space-y-4">
         {/* Dropzone */}
         <div
           onDragOver={(e) => {
