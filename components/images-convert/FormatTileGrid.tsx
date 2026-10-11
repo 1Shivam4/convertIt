@@ -4,13 +4,18 @@ import { Check } from "lucide-react";
 import { useImageConversionStore } from "@/app/store/useImageConversionStore";
 
 const TARGET_FORMATS = [
-  { id: "jpg", label: "JPEG / JPG", badge: "JPG", color: "text-red-400 bg-red-500/20 border-red-500/30" },
+  { id: "jpg", label: "JPG", badge: "JPG", color: "text-red-400 bg-red-500/20 border-red-500/30" },
+  { id: "jpeg", label: "JPEG", badge: "JPEG", color: "text-amber-400 bg-amber-500/20 border-amber-500/30" },
   { id: "png", label: "PNG", badge: "PNG", color: "text-purple-400 bg-purple-500/20 border-purple-500/30" },
   { id: "webp", label: "WEBP", badge: "WEBP", color: "text-emerald-400 bg-emerald-500/20 border-emerald-500/30" },
   { id: "avif", label: "AVIF", badge: "AVIF", color: "text-rose-400 bg-rose-500/20 border-rose-500/30" },
   { id: "gif", label: "GIF", badge: "GIF", color: "text-pink-400 bg-pink-500/20 border-pink-500/30" },
   { id: "tiff", label: "TIFF", badge: "TIFF", color: "text-cyan-400 bg-cyan-500/20 border-cyan-500/30" },
   { id: "bmp", label: "BMP", badge: "BMP", color: "text-blue-400 bg-blue-500/20 border-blue-500/30" },
+  { id: "ico", label: "ICO", badge: "ICO", color: "text-yellow-400 bg-yellow-500/20 border-yellow-500/30" },
+  { id: "svg", label: "SVG", badge: "SVG", color: "text-orange-400 bg-orange-500/20 border-orange-500/30" },
+  { id: "heic", label: "HEIC", badge: "HEIC", color: "text-indigo-400 bg-indigo-500/20 border-indigo-500/30" },
+  { id: "heif", label: "HEIF", badge: "HEIF", color: "text-teal-400 bg-teal-500/20 border-teal-500/30" },
 ];
 
 export default function FormatTileGrid() {

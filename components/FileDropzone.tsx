@@ -20,7 +20,7 @@ import {
   isKnownImageFile,
 } from "../app/lib/file/image-format-guards";
 import PDFToConvertor from "./PDFToConvertor";
-import ImageToConvertor from "./ImageToConvertor";
+import ImagesConvertStudio from "./studios/ImagesConvertStudio";
 import MediaToConvertor from "./MediaToConvertor";
 
 export default function FileDropzone() {
@@ -259,7 +259,7 @@ export default function FileDropzone() {
       file.type.startsWith("image/");
 
     if (isImage) {
-      return <ImageToConvertor />;
+      return <ImagesConvertStudio />;
     }
 
     const isMedia =

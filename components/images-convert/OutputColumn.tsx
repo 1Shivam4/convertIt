@@ -90,13 +90,27 @@ export default function OutputColumn() {
             {/* Converted Output Visual Preview */}
             <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black/60 border border-white/10 flex items-center justify-center">
               {!isBatchZip ? (
-                <Image
-                  src={outputBlobUrl}
-                  alt={outputFileName || "Converted Output"}
-                  fill
-                  unoptimized
-                  className="object-cover"
-                />
+                selectedFormatId === "heic" || selectedFormatId === "heif" ? (
+                  <div className="flex flex-col items-center justify-center text-center p-6 space-y-2">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                      <CheckCircle2 className="w-6 h-6" />
+                    </div>
+                    <span className="text-sm font-semibold text-white">
+                      {selectedFormatId.toUpperCase()} Image Ready
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      High-Efficiency Image Container Encoded
+                    </span>
+                  </div>
+                ) : (
+                  <Image
+                    src={outputBlobUrl}
+                    alt={outputFileName || "Converted Output"}
+                    fill
+                    unoptimized
+                    className="object-cover"
+                  />
+                )
               ) : (
                 <div className="flex flex-col items-center justify-center text-center p-6 space-y-2">
                   <div className="w-12 h-12 rounded-xl bg-red-600/20 border border-red-500/30 flex items-center justify-center">
@@ -119,7 +133,21 @@ export default function OutputColumn() {
                   <p className="studio-mono text-[10px] text-slate-400">
                     {outputSize ? formatFileSize(outputSize) : ""}
                     {outputMeta && ` • ${outputMeta.width} × ${outputMeta.height}`}
-                    {!isBatchZip && ` • image/${selectedFormatId}`}
+                    {!isBatchZip && (
+                      ` • ${
+                        selectedFormatId === "svg"
+                          ? "image/svg+xml"
+                          : selectedFormatId === "ico"
+                          ? "image/x-icon"
+                          : selectedFormatId === "jpg" || selectedFormatId === "jpeg"
+                          ? "image/jpeg"
+                          : selectedFormatId === "heic"
+                          ? "image/heic"
+                          : selectedFormatId === "heif"
+                          ? "image/heif"
+                          : `image/${selectedFormatId}`
+                      }`
+                    )}
                   </p>
                 </div>
               </div>

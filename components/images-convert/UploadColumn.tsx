@@ -171,7 +171,7 @@ export default function UploadColumn() {
         ref={fileInputRef}
         type="file"
         multiple
-        accept="image/*,.jpg,.jpeg,.png,.webp,.avif,.gif,.tiff,.bmp,.heic,.heif"
+        accept="image/*,.jpg,.jpeg,.png,.webp,.avif,.gif,.tiff,.bmp,.ico,.svg,.heic,.heif"
         onChange={handleFileInputChange}
         className="hidden"
       />
@@ -214,14 +214,14 @@ export default function UploadColumn() {
             Choose File
           </button>
           <div className="flex flex-wrap items-center justify-center gap-1.5 mt-1">
-            <span className="badge badge-neutral badge-xs font-mono text-slate-300 border-white/10">JPG</span>
-            <span className="badge badge-neutral badge-xs font-mono text-slate-300 border-white/10">PNG</span>
-            <span className="badge badge-neutral badge-xs font-mono text-slate-300 border-white/10">WEBP</span>
-            <span className="badge badge-neutral badge-xs font-mono text-slate-300 border-white/10">AVIF</span>
-            <span className="badge badge-error badge-outline badge-xs font-mono font-semibold">HEIC</span>
-            <span className="badge badge-neutral badge-xs font-mono text-slate-300 border-white/10">GIF</span>
-            <span className="badge badge-neutral badge-xs font-mono text-slate-300 border-white/10">TIFF</span>
-            <span className="badge badge-neutral badge-xs font-mono text-slate-300 border-white/10">BMP</span>
+            {["JPG", "JPEG", "PNG", "WEBP", "AVIF", "GIF", "TIFF", "BMP", "ICO", "SVG", "HEIC", "HEIF"].map((badge) => (
+              <span
+                key={badge}
+                className="badge badge-neutral badge-xs font-mono text-slate-300 border-white/10"
+              >
+                {badge}
+              </span>
+            ))}
           </div>
           <p className="text-[10px] text-slate-500 mt-2">
             Max batch: <span className="badge badge-outline badge-error badge-xs font-semibold">{maxBatch} images</span> ({planLimits.label} plan)

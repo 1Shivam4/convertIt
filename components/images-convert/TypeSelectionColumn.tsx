@@ -80,17 +80,36 @@ export default function TypeSelectionColumn() {
 
       // Extract converted dimensions for single preview
       if (!isZip) {
-        const img = new window.Image();
-        img.onload = () => {
+        if (selectedFormatId === "heic" || selectedFormatId === "heif") {
           setOutput({
             blobUrl: newBlobUrl,
             fileName: finalName,
             size: blob.size,
-            meta: { width: img.naturalWidth, height: img.naturalHeight },
+            meta: null,
             isZip: false,
           });
-        };
-        img.src = newBlobUrl;
+        } else {
+          const img = new window.Image();
+          img.onload = () => {
+            setOutput({
+              blobUrl: newBlobUrl,
+              fileName: finalName,
+              size: blob.size,
+              meta: { width: img.naturalWidth, height: img.naturalHeight },
+              isZip: false,
+            });
+          };
+          img.onerror = () => {
+            setOutput({
+              blobUrl: newBlobUrl,
+              fileName: finalName,
+              size: blob.size,
+              meta: null,
+              isZip: false,
+            });
+          };
+          img.src = newBlobUrl;
+        }
       } else {
         setOutput({
           blobUrl: newBlobUrl,
