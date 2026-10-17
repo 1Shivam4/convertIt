@@ -312,15 +312,6 @@ export const PDF_FORMAT_OPTIONS: PDFFormatOption[] = [
     endpoint: "/api/pdf/convert?target=/forms/libreoffice/convert",
   },
   {
-    id: "compress",
-    name: "Compress PDF",
-    extension: ".pdf",
-    category: "tools",
-    description: "Optimize PDF structure and reduce file size",
-    iconName: "Zap",
-    endpoint: "/api/pdf/optimize",
-  },
-  {
     id: "pdfa",
     name: "PDF/A Archival",
     extension: ".pdf",

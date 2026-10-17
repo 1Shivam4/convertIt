@@ -61,7 +61,7 @@ export default function PDFUploadColumn() {
     let isMounted = true;
     activeFile.arrayBuffer().then(async (buf) => {
       try {
-        const { PDFDocument } = await import("pdf-lib");
+        const { PDFDocument } = await import("@cantoo/pdf-lib");
         const doc = await PDFDocument.load(buf, { ignoreEncryption: true });
         if (isMounted) setPageCount(doc.getPageCount());
       } catch {

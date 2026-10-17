@@ -317,7 +317,7 @@ export default function PDFToConvertor() {
           formData.append("span", values.splitSpan || "1");
         } else if (values.selectedFormatId === "watermark") {
           // Generate a simple watermark PDF using pdf-lib and send it as the overlay
-          const { PDFDocument, rgb, degrees } = await import("pdf-lib");
+          const { PDFDocument, rgb, degrees } = await import("@cantoo/pdf-lib");
           const watermarkText = values.watermarkText || "CONFIDENTIAL";
           const overlayDoc = await PDFDocument.create();
           // A4 page size

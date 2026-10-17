@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { usePDFConversionStore } from "@/app/store/usePDFConversionStore";
 import { formatFileSize } from "@/app/lib/plans";
 import { PDF_FORMAT_OPTIONS } from "@/app/utils/vars";
+import { triggerBrowserDownload } from "@/app/lib/utils/download";
 
 export default function PDFOutputColumn() {
   const {
@@ -70,12 +71,7 @@ export default function PDFOutputColumn() {
 
   const handleDownload = () => {
     if (!downloadUrl) return;
-    const a = document.createElement("a");
-    a.href = downloadUrl;
-    a.download = outputName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    triggerBrowserDownload(downloadUrl, outputName);
     toast.success(`Downloaded ${outputName}`);
   };
 

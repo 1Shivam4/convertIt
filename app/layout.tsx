@@ -23,6 +23,8 @@ export const metadata: Metadata = {
     "Convert files online in seconds. Convert PDFs, images, Word documents, Excel, PowerPoint, videos, audio, and more with fast, secure, and free file conversion.",
 };
 
+import QueryProvider from "@/components/providers/QueryProvider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -40,8 +42,10 @@ export default function RootLayout({
       )}
     >
       <body className="bg-[#0b0d11] text-slate-100 min-h-screen antialiased selection:bg-red-600 selection:text-white">
-        {children}
-        <Toaster />
+        <QueryProvider>
+          {children}
+          <Toaster />
+        </QueryProvider>
       </body>
     </html>
   );

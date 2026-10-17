@@ -5,6 +5,7 @@ import { RotateCcw, CheckCircle2, Download, Link as LinkIcon, Info, ChevronDown,
 import { toast } from "sonner";
 import { useImageConversionStore } from "@/app/store/useImageConversionStore";
 import { formatFileSize } from "@/app/lib/plans";
+import { triggerBrowserDownload } from "@/app/lib/utils/download";
 
 export default function OutputColumn() {
   const {
@@ -31,12 +32,8 @@ export default function OutputColumn() {
 
   const handleDownload = () => {
     if (!outputBlobUrl || !outputFileName) return;
-    const a = document.createElement("a");
-    a.href = outputBlobUrl;
-    a.download = outputFileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    triggerBrowserDownload(outputBlobUrl, outputFileName);
+    toast.success(`Downloaded ${outputFileName}`);
   };
 
   const handleCopyLink = async () => {

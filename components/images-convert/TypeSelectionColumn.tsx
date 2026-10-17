@@ -1,8 +1,11 @@
 "use client";
 
-import { CloudUpload, FileText, Wrench, SlidersHorizontal, Zap, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { useForm, SubmitHandler } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { CloudUpload, FileText, Wrench, SlidersHorizontal, Zap } from "lucide-react";
 import { useImageConversionStore } from "@/app/store/useImageConversionStore";
+import { imageConverterSchema, ImageConverterFormValues } from "@/app/lib/schemas/imageConverterSchema";
+import { useImageConversion } from "@/app/hooks/useImageConversion";
 import FormatTabContent from "./FormatTabContent";
 import ToolsTabContent from "./ToolsTabContent";
 import AdjustmentsTabContent from "./AdjustmentsTabContent";
@@ -10,7 +13,6 @@ import AdjustmentsTabContent from "./AdjustmentsTabContent";
 export default function TypeSelectionColumn() {
   const {
     files,
-    selectedIndex,
     activeTab,
     setActiveTab,
     selectedFormatId,
@@ -25,25 +27,21 @@ export default function TypeSelectionColumn() {
     stripExif,
     useBackgroundColor,
     backgroundColor,
-    isConverting,
-    setIsConverting,
-    setOutput,
   } = useImageConversionStore();
 
-  const activeFile = files[selectedIndex] || files[0] || null;
+  const { convertImages, isPending } = useImageConversion();
 
-  const handleConvert = async () => {
-    if (files.length === 0) {
-      toast.error("Please upload at least one image first.");
-      return;
-    }
-
-    setIsConverting(true);
-    const optionsPayload = {
-      targetFormat: selectedFormatId,
+  // ── Form with Zod Resolver ─────────────────────────────────────────────────
+  const {
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ImageConverterFormValues>({
+    resolver: zodResolver(imageConverterSchema),
+    values: {
+      selectedFormatId,
       quality,
-      width: width ?? undefined,
-      height: height ?? undefined,
+      width,
+      height,
       fitMode,
       rotateAngle,
       flipHorizontal,
@@ -51,133 +49,18 @@ export default function TypeSelectionColumn() {
       grayscale,
       stripExif,
       backgroundColor: useBackgroundColor ? backgroundColor : undefined,
-    };
+    },
+  });
 
-    try {
-      const formData = new FormData();
-      files.forEach((f) => formData.append("files", f));
-      formData.append("options", JSON.stringify(optionsPayload));
-
-      const res = await fetch("/api/image/convert", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!res.ok && res.status !== 202) {
-        const errorText = await res.text();
-        let message = errorText;
-        try {
-          const parsed = JSON.parse(errorText);
-          if (parsed.error) message = parsed.error;
-        } catch {
-          // not json
-        }
-        throw new Error(message || "Conversion failed");
-      }
-
-      const contentType = res.headers.get("content-type") || "";
-
-      // Handle asynchronous background job if offloaded
-      if (res.status === 202 || contentType.includes("application/json")) {
-        const json = await res.json();
-        if (json.mode === "async" && json.jobId) {
-          toast.info("Large job queued. Processing in background...");
-          let finished = false;
-          while (!finished) {
-            await new Promise((r) => setTimeout(r, 1200));
-            const pollRes = await fetch(`/api/jobs/${json.jobId}/status`);
-            if (pollRes.ok) {
-              const pollData = await pollRes.json();
-              if (pollData.status === "COMPLETED") {
-                const downloadUrl = pollData.downloadUrl || `/api/jobs/${json.jobId}/download`;
-                const fileRes = await fetch(downloadUrl);
-                const fileBlob = await fileRes.blob();
-                const newBlobUrl = URL.createObjectURL(fileBlob);
-                const finalName = `converted_${json.jobId}.${selectedFormatId}`;
-                setOutput({
-                  blobUrl: newBlobUrl,
-                  fileName: finalName,
-                  size: fileBlob.size,
-                  meta: null,
-                  isZip: false,
-                });
-                finished = true;
-                toast.success("Conversion completed!");
-                return;
-              } else if (pollData.status === "FAILED") {
-                throw new Error(pollData.error || "Background conversion job failed");
-              }
-            }
-          }
-          return;
-        } else if (json.error) {
-          throw new Error(json.error);
-        }
-      }
-
-      // Synchronous stream handling
-      const isZip = contentType.includes("zip") || (files.length > 1 && !contentType.includes("image/"));
-      const blob = await res.blob();
-      const newBlobUrl = URL.createObjectURL(blob);
-
-      const baseName = activeFile
-        ? activeFile.name.substring(0, activeFile.name.lastIndexOf("."))
-        : "converted";
-      const finalName = isZip ? "converted_images.zip" : `${baseName}.${selectedFormatId}`;
-
-      // Extract converted dimensions for single preview
-      if (!isZip) {
-        if (selectedFormatId === "heic" || selectedFormatId === "heif") {
-          setOutput({
-            blobUrl: newBlobUrl,
-            fileName: finalName,
-            size: blob.size,
-            meta: null,
-            isZip: false,
-          });
-        } else {
-          const img = new window.Image();
-          img.onload = () => {
-            setOutput({
-              blobUrl: newBlobUrl,
-              fileName: finalName,
-              size: blob.size,
-              meta: { width: img.naturalWidth, height: img.naturalHeight },
-              isZip: false,
-            });
-          };
-          img.onerror = () => {
-            setOutput({
-              blobUrl: newBlobUrl,
-              fileName: finalName,
-              size: blob.size,
-              meta: null,
-              isZip: false,
-            });
-          };
-          img.src = newBlobUrl;
-        }
-      } else {
-        setOutput({
-          blobUrl: newBlobUrl,
-          fileName: finalName,
-          size: blob.size,
-          meta: null,
-          isZip: true,
-        });
-      }
-
-      toast.success(isZip ? "All images converted & packaged to ZIP!" : "Image converted successfully!");
-    } catch (err: any) {
-      console.error(err);
-      toast.error(`Conversion failed: ${err.message || "Unknown error"}`);
-      setIsConverting(false);
-    }
+  const onSubmit: SubmitHandler<ImageConverterFormValues> = (values) => {
+    convertImages(values);
   };
 
   return (
-    <section className="h-full flex flex-col min-h-0 studio-card p-4 sm:p-5 overflow-hidden">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="h-full flex flex-col min-h-0 studio-card p-4 sm:p-5 overflow-hidden"
+    >
       {/* Header */}
       <div className="flex items-center gap-3 shrink-0 pb-3 sm:pb-4 border-b border-white/8">
         <div className="studio-badge-step">
@@ -189,7 +72,7 @@ export default function TypeSelectionColumn() {
         </div>
       </div>
 
-      {/* Scrollable Column Body with extra bottom padding to avoid cut-off */}
+      {/* Scrollable Column Body */}
       <div className="flex-1 min-h-0 overflow-y-auto studio-scrollbar pt-3 pb-8 space-y-4">
         {/* 3 Segmented Tabs */}
         <div className="grid grid-cols-3 gap-1 p-1 bg-white/[0.03] border border-white/8 rounded-xl">
@@ -231,21 +114,30 @@ export default function TypeSelectionColumn() {
           </button>
         </div>
 
+        {/* Validation Errors banner if any */}
+        {Object.keys(errors).length > 0 && (
+          <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400 space-y-1">
+            {errors.selectedFormatId && <p>{errors.selectedFormatId.message}</p>}
+            {errors.quality && <p>{errors.quality.message}</p>}
+            {errors.width && <p>{errors.width.message}</p>}
+            {errors.height && <p>{errors.height.message}</p>}
+          </div>
+        )}
+
         {/* Tab-Specific Content Views */}
         {activeTab === "format" && <FormatTabContent />}
         {activeTab === "tools" && <ToolsTabContent />}
         {activeTab === "adjustments" && <AdjustmentsTabContent />}
       </div>
 
-      {/* Sticky Bottom Convert CTA with DaisyUI */}
+      {/* Sticky Bottom Convert CTA */}
       <div className="pt-3 pb-1 border-t border-white/8 shrink-0 bg-[#0d1117]">
         <button
-          type="button"
-          onClick={handleConvert}
-          disabled={isConverting || files.length === 0}
+          type="submit"
+          disabled={isPending || files.length === 0}
           className="btn btn-error w-full text-white font-semibold min-h-[46px] h-[46px] flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isConverting ? (
+          {isPending ? (
             <>
               <span className="loading loading-spinner loading-sm text-white"></span>
               Converting {files.length} {files.length === 1 ? "Image" : "Images"}...
@@ -258,6 +150,6 @@ export default function TypeSelectionColumn() {
           )}
         </button>
       </div>
-    </section>
+    </form>
   );
 }

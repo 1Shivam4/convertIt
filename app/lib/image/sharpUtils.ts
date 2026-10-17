@@ -1,5 +1,4 @@
 import sharp from "sharp";
-import convertHeic from "heic-convert";
 
 export interface ImageTransformOptions {
   targetFormat: string;
@@ -249,14 +248,10 @@ export async function processImageTransform(
   inputBuffer: Buffer,
   options: ImageTransformOptions,
 ): Promise<ConvertedImageResult> {
-  // 1. Decode HEIC/HEIF containers into standard PNG if detected
+  // 1. Decode HEIC/HEIF containers using native Sharp libheif if detected
   if (isHeicBuffer(inputBuffer)) {
     try {
-      const decodedBuffer = await convertHeic({
-        buffer: inputBuffer,
-        format: "PNG",
-      });
-      inputBuffer = Buffer.from(decodedBuffer);
+      inputBuffer = await sharp(inputBuffer).png().toBuffer();
     } catch (err) {
       console.error("HEIC decoding fallback error:", err);
     }

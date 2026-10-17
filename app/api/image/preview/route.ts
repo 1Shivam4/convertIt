@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import convertHeic from "heic-convert";
 import sharp from "sharp";
 
 export async function POST(req: NextRequest) {
@@ -14,15 +13,8 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const inputBuffer = Buffer.from(arrayBuffer);
 
-    // Decode HEIC/HEIF into PNG/JPEG
-    const decodedBuffer = await convertHeic({
-      buffer: inputBuffer,
-      format: "JPEG",
-      quality: 0.8,
-    });
-
-    // Resize into optimized preview thumbnail for browser rendering
-    const thumbnail = await sharp(Buffer.from(decodedBuffer))
+    // Resize into optimized preview thumbnail for browser rendering (Sharp natively decodes HEIC/HEIF)
+    const thumbnail = await sharp(inputBuffer)
       .rotate()
       .resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true })
       .jpeg({ quality: 85 })
