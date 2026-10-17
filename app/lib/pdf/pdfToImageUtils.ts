@@ -68,3 +68,33 @@ export async function renderPdfPagesToImages(
   const zipContent = await zip.generateAsync({ type: "blob" });
   return { blob: zipContent, isZip: true };
 }
+
+/**
+ * Extracts all readable plain text from a PDF document.
+ * Returns a text/plain Blob.
+ */
+export async function extractPdfText(pdfBuffer: ArrayBuffer): Promise<Blob> {
+  const pdfjs = await import("pdfjs-dist");
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+  const loadingTask = pdfjs.getDocument({ data: pdfBuffer });
+  const pdfDoc = await loadingTask.promise;
+  const numPages = pdfDoc.numPages;
+
+  let fullText = "";
+  for (let i = 1; i <= numPages; i++) {
+    const page = await pdfDoc.getPage(i);
+    const content = await page.getTextContent();
+    const strings = (content.items as any[])
+      .map((item) => item.str || "")
+      .filter(Boolean);
+
+    if (numPages > 1) {
+      fullText += `=== Page ${i} ===\n\n`;
+    }
+    fullText += strings.join(" ") + "\n\n";
+  }
+
+  return new Blob([fullText.trim()], { type: "text/plain;charset=utf-8" });
+}
+

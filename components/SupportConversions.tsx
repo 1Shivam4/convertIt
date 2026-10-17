@@ -60,7 +60,13 @@ export default function SupportConversions() {
 
             <div className="mt-6 pt-4 border-t border-white/5">
               <Link
-                href={category.conversionType === "image" ? "/images-convert" : `/tools/${category.conversionType === "developer" ? "developer" : category.conversionType}`}
+                href={
+                  category.conversionType === "image"
+                    ? "/images-convert"
+                    : category.conversionType === "pdf"
+                    ? "/pdf"
+                    : `/tools/${category.conversionType === "developer" ? "developer" : category.conversionType}`
+                }
                 className="text-xs font-medium text-red-400 group-hover:underline inline-flex items-center gap-1"
               >
                 Explore all {category.name} tools &rarr;

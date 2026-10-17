@@ -1,8 +1,11 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useRef, useState, useEffect, type ChangeEvent, type DragEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { CloudUpload, FileText, Layers, Trash2, X } from "lucide-react";
 import { useConverterStore } from "@/app/store/useFileDetectionStore";
+import { usePDFConversionStore } from "@/app/store/usePDFConversionStore";
+import { isPdfFile, isDocumentForPdf } from "@/app/lib/file/pdf-format-guards";
 import PDFToConvertor from "@/components/PDFToConvertor";
 
 function formatBytes(bytes: number): string {
@@ -16,31 +19,56 @@ function formatBytes(bytes: number): string {
 export default function PDFConverterWorkspace() {
   const { file, files, stage, setFile, addFiles, setSourceType, reset } =
     useConverterStore();
+  const pdfStore = usePDFConversionStore();
+
+  const searchParams = useSearchParams();
+  const toolParam = searchParams.get("tool");
 
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const PDF_SOURCE_TYPE = { extension: "pdf", mimeType: "application/pdf" };
 
-  /** Filter an incoming FileList/array to only valid PDFs */
-  const filterPDFs = (incoming: File[]): File[] =>
-    incoming.filter(
-      (f) =>
-        f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"),
-    );
+  // Sync if usePDFConversionStore has file from navigation
+  useEffect(() => {
+    if (!file && pdfStore.file) {
+      setFile(pdfStore.file);
+      setSourceType(PDF_SOURCE_TYPE);
+    }
+  }, [file, pdfStore.file, setFile, setSourceType]);
+
+  // Auto-initialize virtual document for text-first tools (HTML to PDF / Markdown to PDF)
+  useEffect(() => {
+    if (!file && !pdfStore.file && (toolParam === "html-to-pdf" || toolParam === "markdown-to-pdf")) {
+      const dummyName =
+        toolParam === "html-to-pdf" ? "index.html" : "document.md";
+      const dummyType =
+        toolParam === "html-to-pdf" ? "text/html" : "text/markdown";
+      const virtualFile = new File([""], dummyName, { type: dummyType });
+      setFile(virtualFile);
+      setSourceType(PDF_SOURCE_TYPE);
+      pdfStore.setFile(virtualFile);
+    }
+  }, [toolParam, file, pdfStore, setFile, setSourceType]);
+
+  /** Filter an incoming FileList/array to valid PDFs or documents */
+  const filterDocuments = (incoming: File[]): File[] =>
+    incoming.filter((f) => isPdfFile(f) || isDocumentForPdf(f));
 
   const handleIncoming = (incoming: File[]) => {
-    const valid = filterPDFs(incoming);
+    const valid = filterDocuments(incoming);
     if (valid.length === 0) return;
 
     if (valid.length === 1) {
       // Single file — use setFile so stage machine runs correctly
       setFile(valid[0]);
       setSourceType(PDF_SOURCE_TYPE);
+      pdfStore.setFile(valid[0]);
     } else {
-      // Multiple PDFs — load all, skip per-file detection
+      // Multiple files — load all
       addFiles(valid);
       setSourceType(PDF_SOURCE_TYPE);
+      pdfStore.addFiles(valid);
     }
   };
 
@@ -58,13 +86,17 @@ export default function PDFConverterWorkspace() {
     e.target.value = "";
   };
 
-  // Once a PDF is loaded, hand off entirely to the existing PDFToConvertor workspace
+  // Once a PDF/document is loaded, hand off entirely to the PDFToConvertor workspace
+  const activeFile = file || pdfStore.file;
   if (
-    file &&
+    activeFile &&
     (stage === "ready" ||
       stage === "converting" ||
       stage === "completed" ||
-      stage === "error")
+      stage === "error" ||
+      pdfStore.stage === "ready" ||
+      pdfStore.stage === "converting" ||
+      pdfStore.stage === "completed")
   ) {
     return <PDFToConvertor />;
   }

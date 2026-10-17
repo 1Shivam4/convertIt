@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CornerDownLeft } from "lucide-react";
+import { CornerDownLeft, Cpu, Sliders, Zap, Check } from "lucide-react";
 
 import { useConverterStore } from "@/app/store/useFileDetectionStore";
+import { usePDFConversionStore } from "@/app/store/usePDFConversionStore";
 import { PDF_FORMAT_OPTIONS } from "@/app/utils/vars";
 import {
   pdfConverterSchema,
@@ -27,19 +29,40 @@ import {
 import { renderPdfPagesToImages } from "@/app/lib/pdf/pdfToImageUtils";
 
 export default function PDFToConvertor() {
-  const {
-    file,
-    files,
-    stage,
-    outputFile,
-    outputFileName,
-    error,
-    startConversion,
-    completeConversion,
-    setError,
-    reset,
-    resetConversion,
-  } = useConverterStore();
+  const pdfStore = usePDFConversionStore();
+  const converterStore = useConverterStore();
+
+  const file = pdfStore.file || converterStore.file;
+  const files = pdfStore.files.length > 0 ? pdfStore.files : converterStore.files;
+  const stage = pdfStore.stage !== "idle" ? pdfStore.stage : converterStore.stage;
+  const outputFile = pdfStore.outputFile || converterStore.outputFile;
+  const outputFileName = pdfStore.outputFileName || converterStore.outputFileName;
+  const error = pdfStore.error || converterStore.error;
+
+  const startConversion = () => {
+    pdfStore.startConversion();
+    converterStore.startConversion();
+  };
+
+  const completeConversion = (output: Blob, fileName?: string) => {
+    pdfStore.completeConversion(output, fileName);
+    converterStore.completeConversion(output, fileName);
+  };
+
+  const setError = (err: string | null) => {
+    pdfStore.setError(err);
+    converterStore.setError(err || "");
+  };
+
+  const reset = () => {
+    pdfStore.resetAll();
+    converterStore.reset();
+  };
+
+  const resetConversion = () => {
+    pdfStore.resetConversion();
+    converterStore.resetConversion();
+  };
 
   const [pageManipulations, setPageManipulations] = useState<{
     pageRotations: Record<number, number>;
@@ -56,6 +79,9 @@ export default function PDFToConvertor() {
   >("all");
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const searchParams = useSearchParams();
+  const toolParam = searchParams.get("tool");
+
   const {
     register,
     handleSubmit,
@@ -65,7 +91,10 @@ export default function PDFToConvertor() {
   } = useForm<PDFConverterFormValues>({
     resolver: zodResolver(pdfConverterSchema),
     defaultValues: {
-      selectedFormatId: "docx",
+      selectedFormatId:
+        toolParam && PDF_FORMAT_OPTIONS.some((f) => f.id === toolParam)
+          ? toolParam
+          : "docx",
       rotateAngle: "90",
       pdfaVersion: "PDF/A-1b",
       password: "",
@@ -75,6 +104,17 @@ export default function PDFToConvertor() {
   const selectedFormatId = watch("selectedFormatId");
   const watchRotateAngle = watch("rotateAngle");
   const watchPdfaVersion = watch("pdfaVersion");
+
+  // Sync when toolParam updates or initial mount
+  useEffect(() => {
+    if (toolParam && PDF_FORMAT_OPTIONS.some((f) => f.id === toolParam)) {
+      setValue("selectedFormatId", toolParam);
+      const target = PDF_FORMAT_OPTIONS.find((f) => f.id === toolParam);
+      if (target) {
+        setActiveCategory(target.category as "all" | "document" | "tools");
+      }
+    }
+  }, [toolParam, setValue]);
 
   const selectedFormat = useMemo(() => {
     return (
@@ -311,6 +351,64 @@ export default function PDFToConvertor() {
           formData.append("files", stampFile, stampFile.name);
         }
 
+        // Batch conversion mode: if multiple files are loaded and operation is not 'merge',
+        // convert all files with user-configured concurrency and bundle into a ZIP archive
+        if (files.length > 1 && values.selectedFormatId !== "merge") {
+          const JSZip = (await import("jszip")).default;
+          const zip = new JSZip();
+          const total = files.length;
+          let completed = 0;
+          const limit = Math.max(1, Math.min(5, pdfStore.concurrency || 3));
+          let nextIdx = 0;
+
+          pdfStore.setJobStatus("PROCESSING");
+          pdfStore.setProgress(10);
+
+          async function worker() {
+            while (nextIdx < total && !controller.signal.aborted) {
+              const i = nextIdx++;
+              const curFile = files[i];
+              const batchFormData = new FormData();
+              batchFormData.append("files", curFile, curFile.name);
+
+              if (values.selectedFormatId === "rotate") {
+                batchFormData.append("rotateAngle", values.rotateAngle);
+              } else if (values.selectedFormatId === "encrypt") {
+                batchFormData.append("userPassword", values.password || "");
+                batchFormData.append("ownerPassword", values.password || "");
+              }
+
+              const batchRes = await fetch(url, {
+                method: "POST",
+                body: batchFormData,
+                signal: controller.signal,
+              });
+
+              if (!batchRes.ok) {
+                throw new Error(`Failed to convert ${curFile.name} (status ${batchRes.status})`);
+              }
+
+              const singleBlob = await batchRes.blob();
+              const base = curFile.name.substring(0, curFile.name.lastIndexOf(".")) || curFile.name;
+              zip.file(`${base}${targetFormatDef.extension}`, singleBlob);
+
+              completed++;
+              pdfStore.setProgress(Math.round((completed / total) * 100));
+            }
+          }
+
+          await Promise.all(Array.from({ length: Math.min(limit, total) }, () => worker()));
+          const zipBlob = await zip.generateAsync({ type: "blob" });
+          const baseName = file.name.substring(0, file.name.lastIndexOf(".")) || "batch";
+          completeConversion(zipBlob, `${baseName}_converted_batch.zip`);
+          return;
+        }
+
+        if (pdfStore.useQueue) {
+          url += (url.includes("?") ? "&" : "?") + "forceAsync=true";
+          formData.append("forceAsync", "true");
+        }
+
         const response = await fetch(url, {
           method: "POST",
           body: formData,
@@ -361,6 +459,10 @@ export default function PDFToConvertor() {
         if (response.status === 202 || contentType.includes("application/json")) {
           const json = await response.json();
           if (json.mode === "async" && json.jobId) {
+            pdfStore.setJobId(json.jobId);
+            pdfStore.setJobStatus("QUEUED");
+            pdfStore.setProgress(15);
+
             // Poll for completion
             let finished = false;
             while (!finished && !controller.signal.aborted) {
@@ -372,6 +474,13 @@ export default function PDFToConvertor() {
               });
               if (pollRes.ok) {
                 const pollData = await pollRes.json();
+                pdfStore.setJobStatus(pollData.status);
+                if (pollData.progress) {
+                  pdfStore.setProgress(pollData.progress);
+                } else if (pollData.status === "PROCESSING") {
+                  pdfStore.setProgress(60);
+                }
+
                 if (pollData.status === "COMPLETED") {
                   const downloadUrl =
                     pollData.downloadUrl || `/api/jobs/${json.jobId}/download`;
@@ -379,12 +488,13 @@ export default function PDFToConvertor() {
                     signal: controller.signal,
                   });
                   const fileBlob = await fileRes.blob();
+                  pdfStore.setProgress(100);
                   completeConversion(fileBlob, finalFileName);
                   finished = true;
                   return;
                 } else if (pollData.status === "FAILED") {
                   throw new Error(
-                    pollData.error || "Background conversion job failed",
+                    pollData.error || "Background BullMQ conversion job failed",
                   );
                 }
               }
@@ -499,6 +609,66 @@ export default function PDFToConvertor() {
                 </div>
               </div>
 
+              {/* BullMQ Queue & Parallel Concurrency Bar */}
+              <div className="mb-4 p-3 rounded-xl bg-white/[0.03] border border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
+                {/* Concurrency Selector */}
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 text-slate-300 font-medium">
+                    <Cpu className="w-3.5 h-3.5 text-red-400" />
+                    <span>Concurrency:</span>
+                  </div>
+                  <div className="inline-flex rounded-lg bg-black/40 p-0.5 border border-white/10">
+                    {[
+                      { val: 1, label: "1x" },
+                      { val: 3, label: "3x Balanced" },
+                      { val: 5, label: "5x Turbo" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.val}
+                        type="button"
+                        onClick={() => pdfStore.setConcurrency(opt.val)}
+                        disabled={stage === "converting"}
+                        className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                          pdfStore.concurrency === opt.val
+                            ? "bg-red-600 text-white shadow-sm"
+                            : "text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* BullMQ Async Queue Toggle */}
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 text-[11px]">Async BullMQ:</span>
+                  <button
+                    type="button"
+                    onClick={() => pdfStore.setUseQueue(!pdfStore.useQueue)}
+                    disabled={stage === "converting"}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      pdfStore.useQueue ? "bg-red-600" : "bg-white/10"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        pdfStore.useQueue ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                  <span
+                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                      pdfStore.useQueue
+                        ? "bg-red-500/10 text-red-400 border-red-500/30"
+                        : "bg-white/5 text-slate-400 border-white/10"
+                    }`}
+                  >
+                    {pdfStore.useQueue ? "Redis Queue" : "Direct Stream"}
+                  </span>
+                </div>
+              </div>
+
               {/* Format Selection Component */}
               <FormatSelector
                 selectedFormatId={selectedFormatId}
@@ -534,6 +704,9 @@ export default function PDFToConvertor() {
                 onConvertSubmit={handleSubmit(onSubmit)}
                 onCancelRequest={handleCancelRequest}
                 onResetConversion={resetConversion}
+                jobStatus={pdfStore.jobStatus}
+                jobId={pdfStore.jobId}
+                progress={pdfStore.progress}
               />
             </div>
           </form>

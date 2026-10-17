@@ -1,8 +1,8 @@
 # PDF Architecture Inventory & Migration Blueprint
 
-> **Status**: Paused / Ready for Future Execution  
-> **Target Route**: `/pdf`  
-> **Source Redundancies**: `/tools/pdf`, `/tools/convert-pdf`
+> **Status**: Completed  
+> **Canonical Route**: `/pdf`  
+> **Source Redundancies Removed**: `/tools/pdf`, `/tools/convert-pdf` (with 308 redirects in next.config.ts)
 
 ---
 

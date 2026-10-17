@@ -14,7 +14,7 @@ export default function NavItems() {
 
   const isItemActive = (name: string) => {
     if (name === "Image") return pathname === "/images-convert" || pathname.startsWith("/tools/image");
-    if (name === "PDF") return pathname.startsWith("/tools/pdf");
+    if (name === "PDF") return pathname === "/pdf" || pathname.startsWith("/pdf") || pathname.startsWith("/tools/pdf");
     if (name === "Media") return pathname.startsWith("/tools/media");
     if (name === "Developer Tools") return pathname.startsWith("/tools/developer");
     return false;

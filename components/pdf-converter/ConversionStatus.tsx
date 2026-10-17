@@ -22,6 +22,9 @@ interface ConversionStatusProps {
   onConvertSubmit: () => void;
   onCancelRequest: () => void;
   onResetConversion: () => void;
+  jobStatus?: "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED" | null;
+  jobId?: string | null;
+  progress?: number;
 }
 
 export default function ConversionStatus({
@@ -34,6 +37,9 @@ export default function ConversionStatus({
   onConvertSubmit,
   onCancelRequest,
   onResetConversion,
+  jobStatus,
+  jobId,
+  progress = 0,
 }: ConversionStatusProps) {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
@@ -54,22 +60,38 @@ export default function ConversionStatus({
   }, [outputFileName, formatExtension]);
 
   if (stage === "converting") {
+    const isQueue = jobStatus === "QUEUED" || jobStatus === "PROCESSING";
+
     return (
       <div className="p-6 bg-white/5 border border-white/10 rounded-xl text-center space-y-4">
         <div className="w-12 h-12 mx-auto rounded-full bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-500 animate-pulse">
           <Loader2 className="w-6 h-6 animate-spin" />
         </div>
         <div>
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-semibold mb-2">
+            <span>⚡ {isQueue ? `BullMQ Queue: ${jobStatus}` : "Fast-Path Engine"}</span>
+            {jobId && <span className="font-mono text-slate-400">({jobId.slice(0, 8)})</span>}
+          </div>
           <h4 className="text-base font-bold text-white">
-            Converting document...
+            {jobStatus === "QUEUED"
+              ? "Queued in BullMQ worker..."
+              : jobStatus === "PROCESSING"
+              ? "Worker processing document..."
+              : "Converting document..."}
           </h4>
           <p className="text-xs text-slate-400 mt-1">
             Converting PDF to {formatName} ({formatExtension})
           </p>
         </div>
         <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
-          <div className="bg-gradient-to-r from-red-600 to-red-400 h-full w-3/4 animate-pulse rounded-full" />
+          <div
+            className="bg-gradient-to-r from-red-600 to-red-400 h-full transition-all duration-300 rounded-full"
+            style={{ width: `${Math.max(15, progress || 65)}%` }}
+          />
         </div>
+        {progress > 0 && (
+          <p className="text-[11px] font-mono text-slate-400">{progress}% complete</p>
+        )}
         <button
           type="button"
           onClick={onCancelRequest}

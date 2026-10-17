@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Allow large document/image batches and video/audio uploads without Edge/middleware 10MB truncation
-  middlewareClientMaxBodySize: "250mb",
   experimental: {
+    middlewareClientMaxBodySize: "250mb",
     serverActions: {
       bodySizeLimit: "250mb",
     },
@@ -31,8 +30,13 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/tools/pdf",
+        destination: "/pdf",
+        permanent: true,
+      },
+      {
         source: "/tools/convert-pdf",
-        destination: "/tools/pdf",
+        destination: "/pdf",
         permanent: true,
       },
       {

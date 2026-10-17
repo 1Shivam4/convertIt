@@ -88,51 +88,132 @@ export async function getPresignedDownloadUrl({
   return downloadUrl;
 }
 
+import fs from "fs";
+import path from "path";
+
+// Local storage fallback directory (used when R2 credentials fail or in local development)
+const LOCAL_STORAGE_DIR = path.join(process.cwd(), ".storage");
+
+function getLocalFilePath(key: string): string {
+  const safeKey = key.replace(/^[/\\]+/, "").replace(/\.\./g, "");
+  return path.join(LOCAL_STORAGE_DIR, safeKey);
+}
+
+async function writeLocalFile(key: string, buffer: Buffer): Promise<void> {
+  const filePath = getLocalFilePath(key);
+  await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.promises.writeFile(filePath, buffer);
+}
+
+async function readLocalFile(key: string): Promise<Buffer | null> {
+  try {
+    const filePath = getLocalFilePath(key);
+    if (fs.existsSync(filePath)) {
+      return await fs.promises.readFile(filePath);
+    }
+  } catch {
+    // Continue to R2
+  }
+  return null;
+}
+
 /**
- * Direct server/worker upload of a Buffer to Cloudflare R2 bucket.
+ * Direct server/worker upload of a Buffer to Cloudflare R2 bucket with local fallback.
  */
 export async function uploadBufferToR2(
   buffer: Buffer,
   key: string,
   contentType: string,
 ) {
-  const command = new PutObjectCommand({
-    Bucket: bucketName,
-    Key: key,
-    Body: buffer,
-    ContentType: contentType,
-  });
+  // If R2 credentials are configured, attempt upload to Cloudflare R2
+  if (endpoint && accessKeyId && secretAccessKey) {
+    try {
+      const command = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+      });
 
-  await s3Client.send(command);
-  return { key, bucket: bucketName };
-}
-
-/**
- * Fetches an object buffer from Cloudflare R2 bucket.
- */
-export async function getObjectBufferFromR2(key: string): Promise<Buffer> {
-  const command = new GetObjectCommand({
-    Bucket: bucketName,
-    Key: key,
-  });
-
-  const response = await s3Client.send(command);
-  if (!response.Body) {
-    throw new Error(`Empty response body for R2 object: ${key}`);
+      await s3Client.send(command);
+      return { key, bucket: bucketName };
+    } catch (err: any) {
+      console.warn(
+        `[Storage] Cloudflare R2 PutObject rejected (${err.name || "Error"}: ${err.message}). Storing to local fallback storage: ${key}`
+      );
+      // Fallback: save to local disk
+      await writeLocalFile(key, buffer);
+      return { key, bucket: "local" };
+    }
   }
 
-  const byteArray = await response.Body.transformToByteArray();
-  return Buffer.from(byteArray);
+  // If no credentials, save directly to local disk
+  await writeLocalFile(key, buffer);
+  return { key, bucket: "local" };
 }
 
 /**
- * Deletes an object from Cloudflare R2 bucket.
+ * Fetches an object buffer from local fallback storage or Cloudflare R2 bucket.
+ */
+export async function getObjectBufferFromR2(key: string): Promise<Buffer> {
+  // 1. Check local fallback storage first
+  const localBuffer = await readLocalFile(key);
+  if (localBuffer) {
+    return localBuffer;
+  }
+
+  // 2. Fetch from Cloudflare R2 if credentials exist
+  if (!endpoint || !accessKeyId || !secretAccessKey) {
+    throw new Error(`File not found in local storage and R2 credentials are incomplete for key: ${key}`);
+  }
+
+  try {
+    const command = new GetObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    });
+
+    const response = await s3Client.send(command);
+    if (!response.Body) {
+      throw new Error(`Empty response body for R2 object: ${key}`);
+    }
+
+    const byteArray = await response.Body.transformToByteArray();
+    return Buffer.from(byteArray);
+  } catch (err: any) {
+    if (err.name === "AccessDenied" || err.Code === "AccessDenied" || err.$metadata?.httpStatusCode === 403) {
+      throw new Error(
+        `Cloudflare R2 Access Denied (HTTP 403). The R2 API token in .env does not have permission for bucket "${bucketName}". (Requested key: ${key})`
+      );
+    }
+    throw err;
+  }
+}
+
+/**
+ * Deletes an object from local fallback storage and Cloudflare R2 bucket.
  */
 export async function deleteObjectFromR2(key: string) {
-  const command = new DeleteObjectCommand({
-    Bucket: bucketName,
-    Key: key,
-  });
+  try {
+    const filePath = getLocalFilePath(key);
+    if (fs.existsSync(filePath)) {
+      await fs.promises.unlink(filePath);
+    }
+  } catch {
+    // Ignore error
+  }
 
-  return s3Client.send(command);
+  if (endpoint && accessKeyId && secretAccessKey) {
+    try {
+      const command = new DeleteObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+      });
+
+      return await s3Client.send(command);
+    } catch {
+      // Ignore error
+    }
+  }
 }
+

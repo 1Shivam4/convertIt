@@ -21,8 +21,10 @@ export async function POST(req: NextRequest) {
       const guard = guardFileSize(req, file.size);
       if (!guard.allowed) return fileSizeErrorResponse(guard);
 
-      // Adaptive Routing: check if file is heavy or exceeds synchronous streaming threshold
-      if (shouldOffloadToWorker(file.size, formatId)) {
+      const forceAsync = req.nextUrl.searchParams.get("forceAsync") === "true";
+
+      // Adaptive Routing or user-forced BullMQ queue offload
+      if (forceAsync || shouldOffloadToWorker(file.size, formatId)) {
         const user = await resolveUserFromRequest(req);
         const arrayBuf = await file.arrayBuffer();
         const fileBuffer = Buffer.from(arrayBuf);
@@ -53,9 +55,11 @@ export async function POST(req: NextRequest) {
     /* ignore parse errors — fallback to synchronous proxy */
   }
 
-  return proxyToGotenberg(req, DEFAULT_PATH);
+  const target = req.nextUrl.searchParams.get("target") || DEFAULT_PATH;
+  return proxyToGotenberg(req, target);
 }
 
-export async function GET(req: Request) {
-  return proxyToGotenberg(req, DEFAULT_PATH);
+export async function GET(req: NextRequest) {
+  const target = req.nextUrl.searchParams.get("target") || DEFAULT_PATH;
+  return proxyToGotenberg(req, target);
 }

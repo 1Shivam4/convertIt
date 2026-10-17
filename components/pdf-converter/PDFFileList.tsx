@@ -10,9 +10,15 @@ import {
   Layers,
 } from "lucide-react";
 import { useConverterStore } from "@/app/store/useFileDetectionStore";
+import { usePDFConversionStore } from "@/app/store/usePDFConversionStore";
+import { isPdfFile, isDocumentForPdf } from "@/app/lib/file/pdf-format-guards";
 
 export default function PDFFileList() {
-  const { files, addFiles, removeFile, reorderFiles } = useConverterStore();
+  const converterStore = useConverterStore();
+  const pdfStore = usePDFConversionStore();
+
+  const files = pdfStore.files.length > 0 ? pdfStore.files : converterStore.files;
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const formatFileSize = (bytes: number) => {
@@ -26,12 +32,23 @@ export default function PDFFileList() {
   const handleAddFiles = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selected = Array.from(e.target.files).filter(
-        (f) => f.type === "application/pdf" || f.name.endsWith(".pdf")
+        (f) => isPdfFile(f) || isDocumentForPdf(f)
       );
       if (selected.length > 0) {
-        addFiles(selected);
+        converterStore.addFiles(selected);
+        pdfStore.addFiles(selected);
       }
     }
+  };
+
+  const handleRemove = (idx: number) => {
+    converterStore.removeFile(idx);
+    pdfStore.removeFile(idx);
+  };
+
+  const handleReorder = (from: number, to: number) => {
+    converterStore.reorderFiles(from, to);
+    pdfStore.reorderFiles(from, to);
   };
 
   if (files.length <= 1) {
@@ -116,7 +133,7 @@ export default function PDFFileList() {
               <button
                 type="button"
                 disabled={idx === 0}
-                onClick={() => reorderFiles(idx, idx - 1)}
+                onClick={() => handleReorder(idx, idx - 1)}
                 className="p-1 bg-white/5 hover:bg-white/10 disabled:opacity-30 text-slate-300 rounded transition-colors"
                 title="Move Up in Merge Order"
               >
@@ -125,7 +142,7 @@ export default function PDFFileList() {
               <button
                 type="button"
                 disabled={idx === files.length - 1}
-                onClick={() => reorderFiles(idx, idx + 1)}
+                onClick={() => handleReorder(idx, idx + 1)}
                 className="p-1 bg-white/5 hover:bg-white/10 disabled:opacity-30 text-slate-300 rounded transition-colors"
                 title="Move Down in Merge Order"
               >
@@ -133,7 +150,7 @@ export default function PDFFileList() {
               </button>
               <button
                 type="button"
-                onClick={() => removeFile(idx)}
+                onClick={() => handleRemove(idx)}
                 className="p-1 bg-red-950/80 hover:bg-red-900 border border-red-500/30 text-red-300 rounded transition-colors"
                 title="Remove File"
               >

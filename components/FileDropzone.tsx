@@ -6,6 +6,7 @@ import { CloudUpload, FileText, X, Loader2, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { useConverterStore } from "../app/store/useFileDetectionStore";
 import { useImageConversionStore } from "../app/store/useImageConversionStore";
+import { usePDFConversionStore } from "../app/store/usePDFConversionStore";
 import { detectFileType } from "../app/lib/file/detect_file_types";
 import { useSession } from "../app/lib/auth-client";
 import {
@@ -19,8 +20,11 @@ import {
   isSupportedImageFile,
   isKnownImageFile,
 } from "../app/lib/file/image-format-guards";
-import PDFToConvertor from "./PDFToConvertor";
-import ImagesConvertStudio from "./studios/ImagesConvertStudio";
+import {
+  isPdfFile,
+  isDocumentForPdf,
+  verifyPdfMagicBytes,
+} from "../app/lib/file/pdf-format-guards";
 import MediaToConvertor from "./MediaToConvertor";
 
 export default function FileDropzone() {
@@ -60,13 +64,29 @@ export default function FileDropzone() {
   const processFile = async (file: File) => {
     if (!validateFileSize([file])) return;
 
+    // 1. Image check
     if (isSupportedImageFile(file)) {
       reset();
-      addFiles([file]);
       useImageConversionStore.getState().clearFiles();
       useImageConversionStore.getState().addFiles([file]);
-      setSourceType({ extension: file.name.split(".").pop() || "img", mimeType: file.type || "image/jpeg" });
       router.push("/images-convert");
+      return;
+    }
+
+    // 2. Direct PDF check (Extension, MIME, or binary %PDF- magic bytes)
+    const isDirectPdf = isPdfFile(file) || (await verifyPdfMagicBytes(file));
+    if (isDirectPdf) {
+      reset();
+      usePDFConversionStore.getState().setFile(file);
+      router.push("/pdf");
+      return;
+    }
+
+    // 3. Document check (Word, Excel, PowerPoint, Text, Markdown, HTML, RTF, CSV, EPUB)
+    if (isDocumentForPdf(file)) {
+      reset();
+      usePDFConversionStore.getState().setFile(file);
+      router.push("/pdf");
       return;
     }
 
@@ -80,8 +100,6 @@ export default function FileDropzone() {
     }
 
     try {
-      setFile(file);
-
       const type = await detectFileType(file);
 
       if (!type) {
@@ -89,10 +107,17 @@ export default function FileDropzone() {
         return;
       }
 
+      if (type.extension === "pdf" || isDocumentForPdf({ name: file.name, type: type.mimeType })) {
+        reset();
+        usePDFConversionStore.getState().setFile(file);
+        router.push("/pdf");
+        return;
+      }
+
+      setFile(file);
       setSourceType(type);
     } catch (error) {
       console.error("File detection failed:", error);
-
       setError("Failed to detect the file type.");
     }
   };
@@ -147,16 +172,17 @@ export default function FileDropzone() {
       return;
     }
 
-    // Multi-file drop: if every file is a PDF, load them all at once
-    const allPDFs = dropped.every(
-      (f) =>
-        f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"),
+    // Multi-file drop: if all files are PDFs or documents for PDF, load them into PDF Studio
+    const allDocuments = dropped.every(
+      (f) => isPdfFile(f) || isDocumentForPdf(f)
     );
 
-    if (dropped.length > 1 && allPDFs) {
+    if (dropped.length > 1 && allDocuments) {
       if (!validateFileSize(dropped)) return;
-      addFiles(dropped);
-      setSourceType({ extension: "pdf", mimeType: "application/pdf" });
+      reset();
+      usePDFConversionStore.getState().clearFiles();
+      usePDFConversionStore.getState().addFiles(dropped);
+      router.push("/pdf?tool=merge");
       return;
     }
 
@@ -186,22 +212,22 @@ export default function FileDropzone() {
       }
       if (!validateFileSize(selected)) return;
       reset();
-      addFiles(selected);
       useImageConversionStore.getState().clearFiles();
       useImageConversionStore.getState().addFiles(selected);
-      setSourceType({ extension: "img", mimeType: "image/jpeg" });
       router.push("/images-convert");
+      return;
     }
 
-    const allPDFs = selected.every(
-      (f) =>
-        f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"),
+    const allDocuments = selected.every(
+      (f) => isPdfFile(f) || isDocumentForPdf(f)
     );
 
-    if (selected.length > 1 && allPDFs) {
+    if (selected.length > 1 && allDocuments) {
       if (!validateFileSize(selected)) return;
-      addFiles(selected);
-      setSourceType({ extension: "pdf", mimeType: "application/pdf" });
+      reset();
+      usePDFConversionStore.getState().clearFiles();
+      usePDFConversionStore.getState().addFiles(selected);
+      router.push("/pdf?tool=merge");
     } else {
       await processFile(selected[0]);
     }
@@ -237,7 +263,7 @@ export default function FileDropzone() {
     );
   }
 
-  // Render conversion interface when file is ready
+  // Render conversion interface when file is ready (Media only on home page)
   if (
     file &&
     (stage === "ready" ||
@@ -245,23 +271,6 @@ export default function FileDropzone() {
       stage === "completed" ||
       stage === "error")
   ) {
-    const isPdf =
-      sourceType?.extension === "pdf" ||
-      file.type === "application/pdf" ||
-      file.name.toLowerCase().endsWith(".pdf");
-
-    if (isPdf) {
-      return <PDFToConvertor />;
-    }
-
-    const isImage =
-      sourceType?.mimeType?.startsWith("image/") ||
-      file.type.startsWith("image/");
-
-    if (isImage) {
-      return <ImagesConvertStudio />;
-    }
-
     const isMedia =
       sourceType?.mimeType?.startsWith("video/") ||
       sourceType?.mimeType?.startsWith("audio/") ||
@@ -270,49 +279,6 @@ export default function FileDropzone() {
 
     if (isMedia) {
       return <MediaToConvertor />;
-    }
-
-    // Office documents — route to PDF workspace where Gotenberg converts them
-    const OFFICE_MIME_TYPES = [
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // docx
-      "application/msword", // doc
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation", // pptx
-      "application/vnd.ms-powerpoint", // ppt
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // xlsx
-      "application/vnd.ms-excel", // xls
-      "application/vnd.oasis.opendocument.text", // odt
-      "application/vnd.oasis.opendocument.spreadsheet", // ods
-      "application/vnd.oasis.opendocument.presentation", // odp
-      "application/rtf",
-      "text/rtf",
-      "application/epub+zip",
-      "text/plain",
-      "text/csv",
-    ];
-    const OFFICE_EXTENSIONS = [
-      "docx",
-      "doc",
-      "pptx",
-      "ppt",
-      "xlsx",
-      "xls",
-      "odt",
-      "ods",
-      "odp",
-      "rtf",
-      "epub",
-      "txt",
-      "csv",
-    ];
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-
-    const isOfficeDoc =
-      OFFICE_MIME_TYPES.includes(file.type) ||
-      OFFICE_MIME_TYPES.includes(sourceType?.mimeType ?? "") ||
-      OFFICE_EXTENSIONS.includes(ext);
-
-    if (isOfficeDoc) {
-      return <PDFToConvertor />;
     }
   }
 
